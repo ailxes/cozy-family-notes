@@ -1,1 +1,4 @@
 project_id = "rlcpfitsmmbbynurbaty"
+
+[functions.parse-flyer]
+verify_jwt = false
