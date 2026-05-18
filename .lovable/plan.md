@@ -1,50 +1,55 @@
+## 1. Fix "Add to calendar" not appearing
 
-## Heads-up on stack choice
+Likely cause: the insert succeeds, but the events query is keyed to the currently-viewed week (`["events", weekStart.toISOString()]`). When the new event is on a different week, the home screen looks unchanged so it feels like nothing happened.
 
-You asked for a Supabase Edge Function + `ANTHROPIC_API_KEY` in the Supabase dashboard. This project is TanStack Start on Lovable Cloud, where the standard pattern is a `createServerFn` with the secret stored as a Lovable Cloud runtime secret (I'd add it for you via a secure form — no dashboard trip). Both work; the server-function path is one less moving part and gives logs in the same place as the rest of the app.
+Fix:
+- After a successful save in `AddEventSheet` and `UploadFlyerSheet`, jump the calendar to the week of the newly added event (lift a `onSaved(date)` callback from `HomePage` → both sheets → set `weekStart` and `activeDay`).
+- Surface any insert errors more loudly (console.error + toast with the actual Postgres message) so future failures are visible.
+- Add a small `console.debug` around insert for diagnostic purposes if it still fails after the requery fix.
 
-I'll proceed with **Edge Function as you specified** unless you say otherwise in the question below.
+## 2. Priority field on events
 
-## 1. Edge Function `parse-flyer`
+Database (migration):
+- Add `priority` enum `('low','normal','high')` with default `'normal'` to `public.events`.
+- Index on `(household_id, priority, start_datetime)` for the priorities panel query.
 
-Create `supabase/functions/parse-flyer/index.ts` (Deno) with `verify_jwt = false` in `supabase/config.toml`.
+Frontend:
+- Extend `HearthEvent`, `EventFormValues`, and `DraftEvent` types with `priority`.
+- Add a `PriorityPicker` (3 chip buttons: Low / Normal / High) inside `EventForm` and in the per-event card in `UploadFlyerSheet`'s confirm step.
+- Color-coordinate priority in `src/styles.css` (new tokens `--priority-high`, `--priority-normal`, `--priority-low` with foregrounds) and render a small priority dot/badge on `EventCard`.
 
-Behavior:
-- Accept `POST { image_path: string, household_id: string }`. CORS preflight handled.
-- Use `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` to download from the `flyers` bucket via `supabase.storage.from('flyers').download(image_path)`.
-- Detect MIME from the file extension (`.jpg/.jpeg → image/jpeg`, `.png`, `.webp`, `.gif`); fall back to `image/jpeg`.
-- Convert the blob to base64 (chunked to avoid call-stack overflow on large images).
-- Inject `today = new Date().toISOString().split('T')[0]` into the exact prompt you provided.
-- POST to `https://api.anthropic.com/v1/messages` with `x-api-key`, `anthropic-version: 2023-06-01`, `content-type: application/json`. Model `claude-sonnet-4-5`, `max_tokens: 2048`, message shape exactly as specified.
-- Extract `content[0].text`, strip accidental code fences just in case, `JSON.parse` inside try/catch.
-- Update `uploaded_images` row matching `household_id + storage_path = image_path`: set `parsed = true`, `parse_result = <json>`.
-- Always respond `200` with `{ events, confidence, raw_text_observed }`. On any failure, return `{ events: [], confidence: "low", raw_text_observed: "Parse failed: <msg>" }`.
+## 3. Top reminders panel (priorities)
 
-## 2. Client (`UploadFlyerSheet.tsx` + `src/lib/parseFlyer.ts`)
+- New `PrioritiesPanel` component placed in `HomePage` header row to the right of the month title (stacks under it on mobile).
+- Query: upcoming events with `priority = 'high'` from today forward, limit 5, ordered by `start_datetime`.
+- Each item: colored dot, title, relative date ("Today", "Tomorrow", "Fri May 22"). Click → open `EventDrawer`.
+- Empty state: "No high priorities".
 
-- Replace mock `parseFlyer()` with a call to the edge function via `supabase.functions.invoke('parse-flyer', { body: { image_path, household_id } })`. Keep the existing upload-to-Storage step; pass the storage `path` (not the public URL) into the function.
-- Extend `ParseFlyerResponse` type with `confidence: 'high' | 'medium' | 'low'` and `raw_text_observed?: string`.
-- Loading copy stays "Reading your flyer...", with subtext "This can take a few seconds".
-- Confirm screen additions:
-  - Small `Badge` showing `AI confidence: high/medium/low` (color-mapped: green/amber/red via existing tokens).
-  - If `confidence === 'low'` or `events.length === 0`: render an info panel with `raw_text_observed` and a **Switch to manual add** button that closes the upload sheet and opens `AddEventSheet` pre-filled with `description = raw_text_observed`. (Will add a `defaultDescription` prop to `AddEventSheet`/`EventForm`.)
-- On confirm-save, `source_image_url` is already persisted on each event row — keep that.
+## 4. Week / Month view toggle
 
-## 3. Where to add the key (instructions I'll give you after build)
+- Add a segmented toggle ("Week" | "Month") in the header.
+- Persist choice in `localStorage` (`hearth:view`).
+- New `MonthView` component:
+  - Renders a 6×7 grid for the visible month using `date-fns` (`startOfMonth`, `endOfMonth`, `eachDayOfInterval` padded to whole weeks).
+  - Each cell shows the day number, up to 3 event chips (category-colored), and a "+N more" affordance.
+  - Cell click → opens that day's events in a sheet (reusing `EventCard`); empty cell click → quick-add for that date.
+- Update HomePage navigation: prev/next moves by week in Week view, by month in Month view; "Today" jumps back to current period. The query range expands to the visible month when in Month view.
 
-Lovable Cloud → **Connectors → Lovable Cloud → Backend → Edge Functions → Secrets** → add `ANTHROPIC_API_KEY`. (Equivalent to Supabase Dashboard → Project Settings → Edge Functions → Secrets.) I can also add it via the secret tool — just say the word.
+## 5. Camera capture (separate from upload + manual)
 
-## 4. Test + debug path (will be in the final reply)
+- In `AddActionFab`'s sheet, split the existing "Upload a photo" option into two:
+  1. **Take a photo** — opens the camera (`<input type="file" accept="image/*" capture="environment">`).
+  2. **Choose from library** — file picker without `capture`.
+  3. **Add manually** — unchanged.
+- Refactor `UploadFlyerSheet` to accept a `mode: "camera" | "library"` prop that controls the `capture` attribute, and auto-trigger the file input on open so the camera launches immediately in camera mode.
 
-- Upload a real flyer photo in the app.
-- Tail logs: I'll provide the exact tool call / dashboard path (`supabase--edge_function_logs` for me; Dashboard → Functions → parse-flyer → Logs for you).
-- Re-run with a clearer image if `confidence: low`.
+## Files touched
+
+- New: `supabase/migrations/<ts>_event_priority.sql`, `src/components/MonthView.tsx`, `src/components/PrioritiesPanel.tsx`, `src/components/PriorityPicker.tsx`, `src/components/ViewToggle.tsx`.
+- Edited: `src/lib/hearth.ts`, `src/components/HomePage.tsx`, `src/components/EventForm.tsx`, `src/components/EventCard.tsx`, `src/components/AddEventSheet.tsx`, `src/components/UploadFlyerSheet.tsx`, `src/components/AddActionFab.tsx`, `src/styles.css`.
 
 ## Out of scope
 
-- Re-prompting / retries on low confidence.
-- Streaming the response.
-- Migrating off Edge Functions to `createServerFn` (unless you pick that below).
-
-## One question before I build
-
+- Reminder notifications (push/email).
+- Editing existing events' priority from the calendar without opening the form.
+- Drag-and-drop on month view.
