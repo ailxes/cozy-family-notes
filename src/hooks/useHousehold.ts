@@ -32,8 +32,8 @@ export function useHousehold(userId: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      // @ts-expect-error nested
-      return { id: data.households.id, name: data.households.name, role: data.role };
+      const h = data.households as unknown as { id: string; name: string };
+      return { id: h.id, name: h.name, role: data.role };
     },
   });
 }
