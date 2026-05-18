@@ -1,4 +1,4 @@
-import { Camera } from "lucide-react";
+import { Camera, Flag } from "lucide-react";
 import { format } from "date-fns";
 import { CATEGORY_LABELS, CATEGORY_STYLES, type HearthEvent } from "@/lib/hearth";
 
@@ -11,6 +11,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
   const styles = CATEGORY_STYLES[event.category];
   const start = new Date(event.start_datetime);
   const timeLabel = event.all_day ? "All day" : format(start, "h:mm a");
+  const isHigh = event.priority === "high";
 
   return (
     <button
@@ -26,8 +27,14 @@ export function EventCard({ event, onClick }: EventCardProps) {
           {timeLabel}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm leading-snug truncate">
-            {event.title}
+          <div className="font-medium text-sm leading-snug truncate flex items-center gap-1.5">
+            {isHigh && (
+              <Flag
+                className="w-3 h-3 text-prio-high fill-prio-high shrink-0"
+                aria-label="High priority"
+              />
+            )}
+            <span className="truncate">{event.title}</span>
           </div>
         </div>
         <span className="hidden sm:inline-flex items-center text-[10px] uppercase tracking-wider font-medium opacity-70 shrink-0">
