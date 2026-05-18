@@ -309,23 +309,10 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
                   )}
                   <div className="space-y-2">
                     <Label>Category</Label>
-                    <Select
+                    <CategoryPicker
                       value={d.category}
-                      onValueChange={(v) =>
-                        updateDraft(i, { category: v as EventCategory })
-                      }
-                    >
-                      <SelectTrigger className="h-11 rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORY_OPTIONS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {CATEGORY_LABELS[c]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={(c) => updateDraft(i, { category: c })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Preparation notes</Label>
