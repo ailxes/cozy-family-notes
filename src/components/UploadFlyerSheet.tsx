@@ -12,28 +12,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { parseFlyer, type ParsedEvent } from "@/lib/parseFlyer";
-import {
-  CATEGORY_LABELS,
-  CATEGORY_OPTIONS,
-  type EventCategory,
-} from "@/lib/hearth";
+import { SHARED_HOUSEHOLD_ID, type EventCategory } from "@/lib/hearth";
+import { CategoryPicker } from "./CategoryPicker";
 import { format } from "date-fns";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  householdId: string;
-  userId: string;
 }
 
 type Stage = "pick" | "parsing" | "confirm";
@@ -64,7 +52,8 @@ function parsedToDraft(p: ParsedEvent): DraftEvent {
   };
 }
 
-export function UploadFlyerSheet({ open, onOpenChange, householdId, userId }: Props) {
+export function UploadFlyerSheet({ open, onOpenChange }: Props) {
+  const householdId = SHARED_HOUSEHOLD_ID;
   const fileInput = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("pick");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -102,7 +91,6 @@ export function UploadFlyerSheet({ open, onOpenChange, householdId, userId }: Pr
 
       await supabase.from("uploaded_images").insert({
         household_id: householdId,
-        uploaded_by: userId,
         storage_path: path,
       });
 
@@ -143,7 +131,6 @@ export function UploadFlyerSheet({ open, onOpenChange, householdId, userId }: Pr
         : null;
       return {
         household_id: householdId,
-        created_by: userId,
         title: d.title.trim(),
         description: d.description.trim() || null,
         preparation_notes: d.preparation_notes.trim() || null,
@@ -315,23 +302,10 @@ export function UploadFlyerSheet({ open, onOpenChange, householdId, userId }: Pr
                   )}
                   <div className="space-y-2">
                     <Label>Category</Label>
-                    <Select
+                    <CategoryPicker
                       value={d.category}
-                      onValueChange={(v) =>
-                        updateDraft(i, { category: v as EventCategory })
-                      }
-                    >
-                      <SelectTrigger className="h-11 rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORY_OPTIONS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {CATEGORY_LABELS[c]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={(c) => updateDraft(i, { category: c })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Preparation notes</Label>

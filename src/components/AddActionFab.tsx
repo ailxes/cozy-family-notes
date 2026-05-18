@@ -10,12 +10,15 @@ import { AddEventSheet } from "./AddEventSheet";
 import { UploadFlyerSheet } from "./UploadFlyerSheet";
 
 interface Props {
-  householdId: string;
-  userId: string;
+  initialDate?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function AddActionFab({ householdId, userId }: Props) {
-  const [open, setOpen] = useState(false);
+export function AddActionFab({ initialDate, open: ctlOpen, onOpenChange: ctlSet }: Props = {}) {
+  const [internal, setInternal] = useState(false);
+  const open = ctlOpen ?? internal;
+  const setOpen = ctlSet ?? setInternal;
   const [addOpen, setAddOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
 
@@ -79,15 +82,9 @@ export function AddActionFab({ householdId, userId }: Props) {
       <AddEventSheet
         open={addOpen}
         onOpenChange={setAddOpen}
-        householdId={householdId}
-        userId={userId}
+        initialDate={initialDate}
       />
-      <UploadFlyerSheet
-        open={uploadOpen}
-        onOpenChange={setUploadOpen}
-        householdId={householdId}
-        userId={userId}
-      />
+      <UploadFlyerSheet open={uploadOpen} onOpenChange={setUploadOpen} />
     </>
   );
 }

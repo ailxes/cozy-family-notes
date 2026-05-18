@@ -1,3 +1,5 @@
+export const SHARED_HOUSEHOLD_ID = "00000000-0000-0000-0000-0000000000a1";
+
 export type EventCategory =
   | "school"
   | "sports"

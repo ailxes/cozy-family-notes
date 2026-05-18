@@ -4,18 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  CATEGORY_LABELS,
-  CATEGORY_OPTIONS,
-  type EventCategory,
-} from "@/lib/hearth";
+import { CategoryPicker } from "./CategoryPicker";
+import { type EventCategory } from "@/lib/hearth";
 
 export interface EventFormValues {
   title: string;
@@ -154,22 +144,11 @@ export function EventForm({ value, onChange }: EventFormProps) {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="category">Category</Label>
-        <Select
+        <Label>Category</Label>
+        <CategoryPicker
           value={v.category}
-          onValueChange={(val) => update({ category: val as EventCategory })}
-        >
-          <SelectTrigger id="category" className="h-11 rounded-xl">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {CATEGORY_OPTIONS.map((c) => (
-              <SelectItem key={c} value={c}>
-                {CATEGORY_LABELS[c]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(c) => update({ category: c })}
+        />
       </div>
 
       <div className="space-y-2">

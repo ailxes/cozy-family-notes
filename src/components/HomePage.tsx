@@ -1,36 +1,54 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { startOfWeek, addDays, addWeeks, format } from "date-fns";
-import { ChevronLeft, ChevronRight, CalendarHeart } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useHousehold } from "@/hooks/useHousehold";
-import { AuthScreen } from "./AuthScreen";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  startOfWeek,
+  addDays,
+  addWeeks,
+  format,
+  isSameDay,
+} from "date-fns";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarHeart,
+  CalendarDays,
+} from "lucide-react";
 import { AppShell } from "./AppShell";
 import { WeekView } from "./WeekView";
+import { WeekStrip } from "./WeekStrip";
 import { EventDrawer } from "./EventDrawer";
 import { AddActionFab } from "./AddActionFab";
-import { supabase } from "@/integrations/supabase/client";
-import type { HearthEvent } from "@/lib/hearth";
+import { AddEventSheet } from "./AddEventSheet";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { supabase } from "@/integrations/supabase/client";
+import { SHARED_HOUSEHOLD_ID, type HearthEvent } from "@/lib/hearth";
 
 export function HomePage() {
-  const { user, loading: authLoading } = useAuth();
-  const { data: household, isLoading: hLoading } = useHousehold(user?.id);
+  const today = new Date();
   const [weekStart, setWeekStart] = useState<Date>(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 }),
   );
+  const [activeDay, setActiveDay] = useState<Date>(() => new Date());
   const [selected, setSelected] = useState<HearthEvent | null>(null);
+  const [quickAddDate, setQuickAddDate] = useState<string | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const qc = useQueryClient();
 
   const weekEnd = addDays(weekStart, 7);
 
-  const { data: events, isLoading: eLoading } = useQuery({
-    queryKey: ["events", household?.id, weekStart.toISOString()],
-    enabled: !!household?.id,
+  const { data: events, isLoading } = useQuery({
+    queryKey: ["events", weekStart.toISOString()],
     queryFn: async (): Promise<HearthEvent[]> => {
       const { data, error } = await supabase
         .from("events")
         .select("*")
-        .eq("household_id", household!.id)
+        .eq("household_id", SHARED_HOUSEHOLD_ID)
         .gte("start_datetime", weekStart.toISOString())
         .lt("start_datetime", weekEnd.toISOString())
         .order("start_datetime");
@@ -39,42 +57,64 @@ export function HomePage() {
     },
   });
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-      </div>
-    );
-  }
+  // Realtime: refresh when any event changes
+  useEffect(() => {
+    const channel = supabase
+      .channel("events-shared")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "events" },
+        () => qc.invalidateQueries({ queryKey: ["events"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 
-  if (!user) return <AuthScreen />;
+  const isCurrentWeek = isSameDay(
+    weekStart,
+    startOfWeek(new Date(), { weekStartsOn: 1 }),
+  );
 
-  if (hLoading || !household) {
-    return (
-      <AppShell>
-        <div className="px-5 py-10 text-center text-muted-foreground">
-          Setting up your home...
-        </div>
-      </AppShell>
-    );
-  }
-
-  const isCurrentWeek =
-    format(weekStart, "yyyy-MM-dd") ===
-    format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const goToDate = (d: Date) => {
+    setWeekStart(startOfWeek(d, { weekStartsOn: 1 }));
+    setActiveDay(d);
+    setDatePickerOpen(false);
+  };
 
   return (
     <AppShell>
-      <div className="px-5 md:px-6 pt-5 pb-2 flex items-center justify-between">
-        <div>
-          <h1 className="font-serif text-3xl font-semibold leading-tight">
+      <div className="px-5 md:px-6 pt-6 pb-3 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-serif text-3xl md:text-4xl font-semibold leading-tight">
             {format(weekStart, "MMMM yyyy")}
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground mt-1">
             Week of {format(weekStart, "MMM d")}
+            {" – "}
+            {format(addDays(weekStart, 6), "MMM d")}
           </p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
+          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center"
+                aria-label="Jump to date"
+              >
+                <CalendarDays className="w-4 h-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto p-0 rounded-2xl">
+              <Calendar
+                mode="single"
+                selected={activeDay}
+                onSelect={(d) => d && goToDate(d)}
+                weekStartsOn={1}
+              />
+            </PopoverContent>
+          </Popover>
           <button
             onClick={() => setWeekStart((w) => addWeeks(w, -1))}
             className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center"
@@ -86,10 +126,11 @@ export function HomePage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))
-              }
-              className="text-xs h-9 rounded-full"
+              onClick={() => {
+                setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+                setActiveDay(new Date());
+              }}
+              className="text-xs h-9 rounded-full px-3"
             >
               Today
             </Button>
@@ -104,7 +145,15 @@ export function HomePage() {
         </div>
       </div>
 
-      {eLoading ? (
+      <WeekStrip
+        weekStart={weekStart}
+        activeDay={activeDay}
+        today={today}
+        events={events ?? []}
+        onPick={setActiveDay}
+      />
+
+      {isLoading ? (
         <div className="px-5 py-10 text-center text-muted-foreground text-sm">
           Loading your week...
         </div>
@@ -122,11 +171,20 @@ export function HomePage() {
         <WeekView
           events={events ?? []}
           weekStart={weekStart}
+          activeDay={activeDay}
           onEventClick={setSelected}
+          onEmptyDayAdd={(date) =>
+            setQuickAddDate(format(date, "yyyy-MM-dd"))
+          }
         />
       )}
 
-      <AddActionFab householdId={household.id} userId={user.id} />
+      <AddActionFab />
+      <AddEventSheet
+        open={!!quickAddDate}
+        onOpenChange={(o) => !o && setQuickAddDate(null)}
+        initialDate={quickAddDate ?? undefined}
+      />
       <EventDrawer
         event={selected}
         onOpenChange={(open) => !open && setSelected(null)}
