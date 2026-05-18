@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Camera, PencilLine } from "lucide-react";
+import { Plus, Camera, ImagePlus, PencilLine } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -13,19 +13,30 @@ interface Props {
   initialDate?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onSaved?: (date: Date) => void;
 }
 
-export function AddActionFab({ initialDate, open: ctlOpen, onOpenChange: ctlSet }: Props = {}) {
+export function AddActionFab({
+  initialDate,
+  open: ctlOpen,
+  onOpenChange: ctlSet,
+  onSaved,
+}: Props = {}) {
   const [internal, setInternal] = useState(false);
   const open = ctlOpen ?? internal;
   const setOpen = ctlSet ?? setInternal;
   const [addOpen, setAddOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<"camera" | "library">("library");
 
-  const pick = (which: "upload" | "manual") => {
+  const pick = (which: "camera" | "library" | "manual") => {
     setOpen(false);
-    if (which === "upload") setUploadOpen(true);
-    else setAddOpen(true);
+    if (which === "manual") {
+      setAddOpen(true);
+    } else {
+      setUploadMode(which);
+      setUploadOpen(true);
+    }
   };
 
   return (
@@ -48,16 +59,30 @@ export function AddActionFab({ initialDate, open: ctlOpen, onOpenChange: ctlSet 
           </SheetHeader>
           <div className="space-y-3 pt-2">
             <button
-              onClick={() => pick("upload")}
+              onClick={() => pick("camera")}
               className="w-full flex items-center gap-4 p-4 rounded-2xl bg-accent/40 hover:bg-accent/60 transition-colors text-left"
             >
               <div className="w-11 h-11 rounded-xl bg-accent flex items-center justify-center">
                 <Camera className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <div className="font-medium">Upload a photo</div>
+                <div className="font-medium">Take a photo</div>
                 <div className="text-xs text-muted-foreground">
-                  School flyer, schedule, screenshot
+                  Open your camera to snap a flyer
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => pick("library")}
+              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-accent/30 hover:bg-accent/50 transition-colors text-left"
+            >
+              <div className="w-11 h-11 rounded-xl bg-accent flex items-center justify-center">
+                <ImagePlus className="w-5 h-5 text-accent-foreground" />
+              </div>
+              <div>
+                <div className="font-medium">Choose from library</div>
+                <div className="text-xs text-muted-foreground">
+                  Pick a saved photo or screenshot
                 </div>
               </div>
             </button>
@@ -83,8 +108,14 @@ export function AddActionFab({ initialDate, open: ctlOpen, onOpenChange: ctlSet 
         open={addOpen}
         onOpenChange={setAddOpen}
         initialDate={initialDate}
+        onSaved={onSaved}
       />
-      <UploadFlyerSheet open={uploadOpen} onOpenChange={setUploadOpen} />
+      <UploadFlyerSheet
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        mode={uploadMode}
+        onSaved={onSaved}
+      />
     </>
   );
 }
