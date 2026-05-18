@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import {
@@ -17,18 +17,28 @@ import {
 } from "./EventForm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SHARED_HOUSEHOLD_ID } from "@/lib/hearth";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  householdId: string;
-  userId: string;
+  initialDate?: string;
 }
 
-export function AddEventSheet({ open, onOpenChange, householdId, userId }: Props) {
-  const [values, setValues] = useState<EventFormValues>(defaultFormValues());
+export function AddEventSheet({ open, onOpenChange, initialDate }: Props) {
+  const [values, setValues] = useState<EventFormValues>(() => {
+    const base = defaultFormValues();
+    return initialDate ? { ...base, date: initialDate } : base;
+  });
   const [saving, setSaving] = useState(false);
   const qc = useQueryClient();
+
+  useEffect(() => {
+    if (open) {
+      const base = defaultFormValues();
+      setValues(initialDate ? { ...base, date: initialDate } : base);
+    }
+  }, [open, initialDate]);
 
   const onSubmit = async () => {
     if (!values.title.trim()) {
@@ -44,8 +54,7 @@ export function AddEventSheet({ open, onOpenChange, householdId, userId }: Props
       all_day: values.allDay,
       category: values.category,
       source: "manual",
-      household_id: householdId,
-      created_by: userId,
+      household_id: SHARED_HOUSEHOLD_ID,
       ...iso,
     });
     setSaving(false);
@@ -55,7 +64,6 @@ export function AddEventSheet({ open, onOpenChange, householdId, userId }: Props
     }
     toast.success("Event added");
     qc.invalidateQueries({ queryKey: ["events"] });
-    setValues(defaultFormValues());
     onOpenChange(false);
   };
 
