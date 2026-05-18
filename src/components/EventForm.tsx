@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { CategoryPicker } from "./CategoryPicker";
-import { type EventCategory } from "@/lib/hearth";
+import { PriorityPicker } from "./PriorityPicker";
+import { type EventCategory, type EventPriority } from "@/lib/hearth";
 
 export interface EventFormValues {
   title: string;
@@ -14,6 +15,7 @@ export interface EventFormValues {
   endTime: string; // HH:mm
   allDay: boolean;
   category: EventCategory;
+  priority: EventPriority;
   description: string;
   preparation_notes: string;
 }
@@ -35,6 +37,7 @@ export function defaultFormValues(): EventFormValues {
     endTime: format(end, "HH:mm"),
     allDay: false,
     category: "school",
+    priority: "normal",
     description: "",
     preparation_notes: "",
   };
@@ -63,9 +66,7 @@ export function buildIsoFromValues(v: EventFormValues): {
     return { start_datetime: start.toISOString(), end_datetime: null };
   }
   const start = new Date(`${v.date}T${v.startTime}:00`);
-  const end = v.endTime
-    ? new Date(`${v.date}T${v.endTime}:00`)
-    : null;
+  const end = v.endTime ? new Date(`${v.date}T${v.endTime}:00`) : null;
   return {
     start_datetime: start.toISOString(),
     end_datetime: end ? end.toISOString() : null,
@@ -148,6 +149,14 @@ export function EventForm({ value, onChange }: EventFormProps) {
         <CategoryPicker
           value={v.category}
           onChange={(c) => update({ category: c })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Priority</Label>
+        <PriorityPicker
+          value={v.priority}
+          onChange={(p) => update({ priority: p })}
         />
       </div>
 

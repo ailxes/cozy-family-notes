@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Upload, Sparkles, Trash2, Camera, PencilLine } from "lucide-react";
+import { Loader2, Upload, Sparkles, Trash2, Camera, ImagePlus, PencilLine } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -16,14 +16,17 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { parseFlyer, type ParsedEvent, type ParseConfidence } from "@/lib/parseFlyer";
-import { SHARED_HOUSEHOLD_ID, type EventCategory } from "@/lib/hearth";
+import { SHARED_HOUSEHOLD_ID, type EventCategory, type EventPriority } from "@/lib/hearth";
 import { CategoryPicker } from "./CategoryPicker";
+import { PriorityPicker } from "./PriorityPicker";
 import { AddEventSheet } from "./AddEventSheet";
 import { format } from "date-fns";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode?: "camera" | "library";
+  onSaved?: (date: Date) => void;
 }
 
 type Stage = "pick" | "parsing" | "confirm";
@@ -35,6 +38,7 @@ interface DraftEvent {
   endTime: string;
   allDay: boolean;
   category: EventCategory;
+  priority: EventPriority;
   description: string;
   preparation_notes: string;
 }
@@ -49,6 +53,7 @@ function parsedToDraft(p: ParsedEvent): DraftEvent {
     endTime: format(e, "HH:mm"),
     allDay: p.all_day ?? false,
     category: p.category,
+    priority: "normal",
     description: p.description ?? "",
     preparation_notes: p.preparation_notes ?? "",
   };
@@ -60,7 +65,7 @@ const CONFIDENCE_STYLES: Record<ParseConfidence, string> = {
   low: "bg-rose-100 text-rose-900 border-rose-200",
 };
 
-export function UploadFlyerSheet({ open, onOpenChange }: Props) {
+export function UploadFlyerSheet({ open, onOpenChange, mode = "library", onSaved }: Props) {
   const householdId = SHARED_HOUSEHOLD_ID;
   const fileInput = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("pick");
@@ -88,11 +93,18 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
     onOpenChange(next);
   };
 
+  // Auto-open the file picker (or camera) when the sheet opens
+  useEffect(() => {
+    if (open && stage === "pick") {
+      const t = setTimeout(() => fileInput.current?.click(), 200);
+      return () => clearTimeout(t);
+    }
+  }, [open, stage, mode]);
+
   const switchToManual = () => {
     setManualDescription(rawText || "");
     onOpenChange(false);
     reset();
-    // Open manual sheet after a tick so the upload sheet finishes closing
     setTimeout(() => setManualOpen(true), 150);
   };
 
@@ -123,6 +135,7 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
       setStage("confirm");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
+      console.error("[UploadFlyerSheet] parse failed", err);
       toast.error(msg);
       reset();
     }
@@ -155,6 +168,7 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
         preparation_notes: d.preparation_notes.trim() || null,
         all_day: d.allDay,
         category: d.category,
+        priority: d.priority,
         source: "photo_upload",
         source_image_url: imageUrl,
         start_datetime: start.toISOString(),
@@ -164,13 +178,19 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
     const { error } = await supabase.from("events").insert(rows);
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      console.error("[UploadFlyerSheet] insert failed", error);
+      toast.error(error.message || "Couldn't save events");
       return;
     }
     toast.success(
       drafts.length === 1 ? "Event added" : `${drafts.length} events added`,
     );
     qc.invalidateQueries({ queryKey: ["events"] });
+    // Jump to the earliest new event
+    const earliest = rows
+      .map((r) => new Date(r.start_datetime))
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+    if (earliest) onSaved?.(earliest);
     onClose(false);
   };
 
@@ -185,7 +205,7 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
       >
         <SheetHeader className="px-6 pt-6 pb-2 text-left">
           <SheetTitle className="font-serif text-2xl">
-            {stage === "confirm" ? "Confirm events" : "Upload flyer"}
+            {stage === "confirm" ? "Confirm events" : mode === "camera" ? "Take a photo" : "Upload flyer"}
           </SheetTitle>
         </SheetHeader>
 
@@ -193,18 +213,25 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
           {stage === "pick" && (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Snap a photo of a school flyer or screenshot. We'll pull out the
-                dates and details for you to confirm.
+                {mode === "camera"
+                  ? "Your camera should open in a moment. Snap a clear, well-lit photo of the flyer."
+                  : "Pick a photo or screenshot. We'll pull out the dates and details for you to confirm."}
               </p>
               <button
                 onClick={() => fileInput.current?.click()}
                 className="w-full border-2 border-dashed border-border rounded-2xl py-12 px-6 flex flex-col items-center gap-3 hover:border-primary/50 hover:bg-secondary/50 transition-colors"
               >
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <Camera className="w-6 h-6 text-primary" />
+                  {mode === "camera" ? (
+                    <Camera className="w-6 h-6 text-primary" />
+                  ) : (
+                    <ImagePlus className="w-6 h-6 text-primary" />
+                  )}
                 </div>
                 <div className="text-center">
-                  <div className="font-medium">Take a photo or choose one</div>
+                  <div className="font-medium">
+                    {mode === "camera" ? "Open camera" : "Choose an image"}
+                  </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     JPG, PNG, or HEIC
                   </div>
@@ -214,7 +241,7 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
                 ref={fileInput}
                 type="file"
                 accept="image/*"
-                capture="environment"
+                {...(mode === "camera" ? { capture: "environment" as const } : {})}
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -361,6 +388,13 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label>Priority</Label>
+                    <PriorityPicker
+                      value={d.priority}
+                      onChange={(p) => updateDraft(i, { priority: p })}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Preparation notes</Label>
                     <Textarea
                       value={d.preparation_notes}
@@ -402,6 +436,7 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
       open={manualOpen}
       onOpenChange={setManualOpen}
       defaultDescription={manualDescription}
+      onSaved={onSaved}
     />
     </>
   );

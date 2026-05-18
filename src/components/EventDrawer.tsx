@@ -53,6 +53,7 @@ export function EventDrawer({ event, onOpenChange }: Props) {
         ...times,
         allDay: event.all_day,
         category: event.category,
+        priority: event.priority ?? "normal",
         description: event.description ?? "",
         preparation_notes: event.preparation_notes ?? "",
       });
@@ -76,6 +77,7 @@ export function EventDrawer({ event, onOpenChange }: Props) {
         preparation_notes: values.preparation_notes.trim() || null,
         all_day: values.allDay,
         category: values.category,
+        priority: values.priority,
         ...iso,
       })
       .eq("id", event.id);

@@ -24,6 +24,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   initialDate?: string;
   defaultDescription?: string;
+  onSaved?: (date: Date) => void;
 }
 
 export function AddEventSheet({
@@ -31,6 +32,7 @@ export function AddEventSheet({
   onOpenChange,
   initialDate,
   defaultDescription,
+  onSaved,
 }: Props) {
   const [values, setValues] = useState<EventFormValues>(() => {
     const base = defaultFormValues();
@@ -67,17 +69,20 @@ export function AddEventSheet({
       preparation_notes: values.preparation_notes.trim() || null,
       all_day: values.allDay,
       category: values.category,
+      priority: values.priority,
       source: "manual",
       household_id: SHARED_HOUSEHOLD_ID,
       ...iso,
     });
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      console.error("[AddEventSheet] insert failed", error);
+      toast.error(error.message || "Couldn't save event");
       return;
     }
     toast.success("Event added");
     qc.invalidateQueries({ queryKey: ["events"] });
+    onSaved?.(new Date(iso.start_datetime));
     onOpenChange(false);
   };
 

@@ -25,6 +25,7 @@ export type Database = {
           household_id: string
           id: string
           preparation_notes: string | null
+          priority: Database["public"]["Enums"]["event_priority"]
           source: string
           source_image_url: string | null
           start_datetime: string
@@ -40,6 +41,7 @@ export type Database = {
           household_id: string
           id?: string
           preparation_notes?: string | null
+          priority?: Database["public"]["Enums"]["event_priority"]
           source?: string
           source_image_url?: string | null
           start_datetime: string
@@ -55,6 +57,7 @@ export type Database = {
           household_id?: string
           id?: string
           preparation_notes?: string | null
+          priority?: Database["public"]["Enums"]["event_priority"]
           source?: string
           source_image_url?: string | null
           start_datetime?: string
@@ -227,6 +230,7 @@ export type Database = {
         | "spirit_day"
         | "personal"
         | "other"
+      event_priority: "low" | "normal" | "high"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -362,6 +366,7 @@ export const Constants = {
         "personal",
         "other",
       ],
+      event_priority: ["low", "normal", "high"],
     },
   },
 } as const

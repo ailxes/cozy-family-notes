@@ -8,6 +8,8 @@ export type EventCategory =
   | "personal"
   | "other";
 
+export type EventPriority = "low" | "normal" | "high";
+
 export interface HearthEvent {
   id: string;
   household_id: string;
@@ -17,6 +19,7 @@ export interface HearthEvent {
   end_datetime: string | null;
   all_day: boolean;
   category: EventCategory;
+  priority: EventPriority;
   source: string;
   source_image_url: string | null;
   preparation_notes: string | null;
@@ -54,3 +57,20 @@ export const CATEGORY_OPTIONS: EventCategory[] = [
   "personal",
   "other",
 ];
+
+export const PRIORITY_LABELS: Record<EventPriority, string> = {
+  low: "Low",
+  normal: "Normal",
+  high: "High",
+};
+
+export const PRIORITY_OPTIONS: EventPriority[] = ["low", "normal", "high"];
+
+export const PRIORITY_STYLES: Record<
+  EventPriority,
+  { bg: string; text: string; dot: string }
+> = {
+  low: { bg: "bg-prio-low", text: "text-prio-low-fg", dot: "bg-prio-low-fg" },
+  normal: { bg: "bg-prio-normal", text: "text-prio-normal-fg", dot: "bg-prio-normal-fg" },
+  high: { bg: "bg-prio-high", text: "text-prio-high-fg", dot: "bg-prio-high" },
+};

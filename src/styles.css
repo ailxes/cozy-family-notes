@@ -56,6 +56,13 @@
   --color-cat-other: var(--cat-other);
   --color-cat-other-fg: var(--cat-other-fg);
 
+  --color-prio-high: var(--prio-high);
+  --color-prio-high-fg: var(--prio-high-fg);
+  --color-prio-normal: var(--prio-normal);
+  --color-prio-normal-fg: var(--prio-normal-fg);
+  --color-prio-low: var(--prio-low);
+  --color-prio-low-fg: var(--prio-low-fg);
+
   --shadow-soft: 0 1px 2px oklch(0.4 0.02 70 / 0.04), 0 8px 24px oklch(0.4 0.02 70 / 0.06);
   --shadow-lift: 0 2px 6px oklch(0.4 0.02 70 / 0.06), 0 16px 40px oklch(0.4 0.02 70 / 0.08);
 }
@@ -111,6 +118,14 @@
 
   --cat-other: oklch(0.92 0.012 75);
   --cat-other-fg: oklch(0.4 0.02 65);
+
+  /* Priority tokens — red / amber / neutral */
+  --prio-high: oklch(0.62 0.2 28);
+  --prio-high-fg: oklch(0.985 0.012 80);
+  --prio-normal: oklch(0.85 0.04 75);
+  --prio-normal-fg: oklch(0.4 0.04 65);
+  --prio-low: oklch(0.88 0.02 220);
+  --prio-low-fg: oklch(0.45 0.05 220);
 }
 
 .dark {
