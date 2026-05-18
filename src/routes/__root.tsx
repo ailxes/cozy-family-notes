@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -7,7 +7,9 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 
@@ -76,10 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Hearth — Your family's week, at a glance" },
       { name: "description", content: "A calm shared calendar for parents." },
       { name: "author", content: "Hearth" },
-      { property: "og:title", content: "Hearth" },
+      { property: "og:title", content: "Hearth — Your family's week, at a glance" },
       { property: "og:description", content: "A calm shared calendar for parents." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Hearth — Your family's week, at a glance" },
+      { name: "twitter:description", content: "A calm shared calendar for parents." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/eeabaca4-2f5d-4cb2-b1e2-790001cb4483/id-preview-6a6db4e9--8946b78e-fce2-4bff-bbf4-da42471b7cc7.lovable.app-1779085718369.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/eeabaca4-2f5d-4cb2-b1e2-790001cb4483/id-preview-6a6db4e9--8946b78e-fce2-4bff-bbf4-da42471b7cc7.lovable.app-1779085718369.png" },
     ],
     links: [
       {
@@ -113,8 +119,22 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthSync />
       <Outlet />
       <Toaster />
     </QueryClientProvider>
   );
+}
+
+function AuthSync() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      router.invalidate();
+      queryClient.invalidateQueries();
+    });
+    return () => subscription.unsubscribe();
+  }, [router, queryClient]);
+  return null;
 }
