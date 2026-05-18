@@ -23,12 +23,22 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialDate?: string;
+  defaultDescription?: string;
 }
 
-export function AddEventSheet({ open, onOpenChange, initialDate }: Props) {
+export function AddEventSheet({
+  open,
+  onOpenChange,
+  initialDate,
+  defaultDescription,
+}: Props) {
   const [values, setValues] = useState<EventFormValues>(() => {
     const base = defaultFormValues();
-    return initialDate ? { ...base, date: initialDate } : base;
+    return {
+      ...base,
+      ...(initialDate ? { date: initialDate } : {}),
+      ...(defaultDescription ? { description: defaultDescription } : {}),
+    };
   });
   const [saving, setSaving] = useState(false);
   const qc = useQueryClient();
@@ -36,9 +46,13 @@ export function AddEventSheet({ open, onOpenChange, initialDate }: Props) {
   useEffect(() => {
     if (open) {
       const base = defaultFormValues();
-      setValues(initialDate ? { ...base, date: initialDate } : base);
+      setValues({
+        ...base,
+        ...(initialDate ? { date: initialDate } : {}),
+        ...(defaultDescription ? { description: defaultDescription } : {}),
+      });
     }
-  }, [open, initialDate]);
+  }, [open, initialDate, defaultDescription]);
 
   const onSubmit = async () => {
     if (!values.title.trim()) {
