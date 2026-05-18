@@ -14,16 +14,219 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      events: {
+        Row: {
+          all_day: boolean
+          category: Database["public"]["Enums"]["event_category"]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_datetime: string | null
+          household_id: string
+          id: string
+          preparation_notes: string | null
+          source: string
+          source_image_url: string | null
+          start_datetime: string
+          title: string
+        }
+        Insert: {
+          all_day?: boolean
+          category?: Database["public"]["Enums"]["event_category"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_datetime?: string | null
+          household_id: string
+          id?: string
+          preparation_notes?: string | null
+          source?: string
+          source_image_url?: string | null
+          start_datetime: string
+          title: string
+        }
+        Update: {
+          all_day?: boolean
+          category?: Database["public"]["Enums"]["event_category"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_datetime?: string | null
+          household_id?: string
+          id?: string
+          preparation_notes?: string | null
+          source?: string
+          source_image_url?: string | null
+          start_datetime?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      household_invites: {
+        Row: {
+          created_at: string
+          email: string
+          household_id: string
+          id: string
+          invited_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          household_id: string
+          id?: string
+          invited_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          household_id?: string
+          id?: string
+          invited_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_invites_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      household_members: {
+        Row: {
+          household_id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          household_id: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          household_id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_members_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      households: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      uploaded_images: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          parse_result: Json | null
+          parsed: boolean
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          parse_result?: Json | null
+          parsed?: boolean
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          parse_result?: Json | null
+          parsed?: boolean
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uploaded_images_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_household_id: { Args: never; Returns: string }
+      is_household_member: {
+        Args: { _household: string; _user: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      event_category:
+        | "school"
+        | "sports"
+        | "deadline"
+        | "spirit_day"
+        | "personal"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +353,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      event_category: [
+        "school",
+        "sports",
+        "deadline",
+        "spirit_day",
+        "personal",
+        "other",
+      ],
+    },
   },
 } as const
