@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Upload, Sparkles, Trash2, Camera } from "lucide-react";
+import { Loader2, Upload, Sparkles, Trash2, Camera, PencilLine } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -12,11 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { parseFlyer, type ParsedEvent } from "@/lib/parseFlyer";
+import { parseFlyer, type ParsedEvent, type ParseConfidence } from "@/lib/parseFlyer";
 import { SHARED_HOUSEHOLD_ID, type EventCategory } from "@/lib/hearth";
 import { CategoryPicker } from "./CategoryPicker";
+import { AddEventSheet } from "./AddEventSheet";
 import { format } from "date-fns";
 
 interface Props {
@@ -52,6 +54,12 @@ function parsedToDraft(p: ParsedEvent): DraftEvent {
   };
 }
 
+const CONFIDENCE_STYLES: Record<ParseConfidence, string> = {
+  high: "bg-emerald-100 text-emerald-900 border-emerald-200",
+  medium: "bg-amber-100 text-amber-900 border-amber-200",
+  low: "bg-rose-100 text-rose-900 border-rose-200",
+};
+
 export function UploadFlyerSheet({ open, onOpenChange }: Props) {
   const householdId = SHARED_HOUSEHOLD_ID;
   const fileInput = useRef<HTMLInputElement>(null);
@@ -59,7 +67,11 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<DraftEvent[]>([]);
+  const [confidence, setConfidence] = useState<ParseConfidence>("medium");
+  const [rawText, setRawText] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualDescription, setManualDescription] = useState<string>("");
   const qc = useQueryClient();
 
   const reset = () => {
@@ -67,11 +79,21 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
     setImagePreview(null);
     setImageUrl(null);
     setDrafts([]);
+    setConfidence("medium");
+    setRawText("");
   };
 
   const onClose = (next: boolean) => {
     if (!next) reset();
     onOpenChange(next);
+  };
+
+  const switchToManual = () => {
+    setManualDescription(rawText || "");
+    onOpenChange(false);
+    reset();
+    // Open manual sheet after a tick so the upload sheet finishes closing
+    setTimeout(() => setManualOpen(true), 150);
   };
 
   const onPick = async (file: File) => {
@@ -94,12 +116,9 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
         storage_path: path,
       });
 
-      const result = await parseFlyer(pub.publicUrl);
-      if (!result.events.length) {
-        toast.error("Couldn't find any events on that flyer");
-        reset();
-        return;
-      }
+      const result = await parseFlyer(path, householdId);
+      setConfidence(result.confidence);
+      setRawText(result.raw_text_observed ?? "");
       setDrafts(result.events.map(parsedToDraft));
       setStage("confirm");
     } catch (err) {
@@ -155,7 +174,10 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
     onClose(false);
   };
 
+  const showLowFallback = stage === "confirm" && (confidence === "low" || drafts.length === 0);
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent
         side="bottom"
@@ -216,7 +238,7 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
                 <span className="font-medium">Reading your flyer...</span>
               </div>
               <p className="text-xs text-muted-foreground text-center max-w-xs">
-                Finding dates, times, and what to bring.
+                This can take a few seconds while AI finds dates, times, and what to bring.
               </p>
             </div>
           )}
@@ -230,10 +252,41 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
                   className="w-full max-h-48 object-cover rounded-xl border border-border"
                 />
               )}
-              <p className="text-sm text-muted-foreground">
-                Found {drafts.length} {drafts.length === 1 ? "event" : "events"}. Edit
-                anything that looks off.
-              </p>
+
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-sm text-muted-foreground">
+                  {drafts.length > 0
+                    ? `Found ${drafts.length} ${drafts.length === 1 ? "event" : "events"}. Edit anything that looks off.`
+                    : "No events extracted."}
+                </p>
+                <Badge variant="outline" className={`${CONFIDENCE_STYLES[confidence]} border`}>
+                  AI confidence: {confidence}
+                </Badge>
+              </div>
+
+              {showLowFallback && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                  <div className="text-sm font-medium text-amber-900">
+                    Couldn't extract clean events
+                  </div>
+                  <p className="text-xs text-amber-900/80 leading-relaxed">
+                    Try a clearer, well-lit photo — or add the event manually.
+                  </p>
+                  {rawText && (
+                    <div className="text-xs text-amber-900/80 italic border-l-2 border-amber-300 pl-3">
+                      "{rawText}"
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={switchToManual}
+                    className="w-full h-10 rounded-xl"
+                  >
+                    <PencilLine className="w-4 h-4 mr-2" />
+                    Switch to manual add
+                  </Button>
+                </div>
+              )}
 
               {drafts.map((d, i) => (
                 <div
@@ -324,11 +377,11 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
           )}
         </div>
 
-        {stage === "confirm" && (
+        {stage === "confirm" && drafts.length > 0 && (
           <div className="px-6 py-4 border-t border-border bg-background">
             <Button
               onClick={onConfirm}
-              disabled={saving || drafts.length === 0}
+              disabled={saving}
               className="w-full h-12 rounded-xl text-base"
             >
               {saving ? (
@@ -344,5 +397,12 @@ export function UploadFlyerSheet({ open, onOpenChange }: Props) {
         )}
       </SheetContent>
     </Sheet>
+
+    <AddEventSheet
+      open={manualOpen}
+      onOpenChange={setManualOpen}
+      defaultDescription={manualDescription}
+    />
+    </>
   );
 }

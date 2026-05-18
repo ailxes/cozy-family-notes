@@ -30,11 +30,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { SHARED_HOUSEHOLD_ID, type HearthEvent } from "@/lib/hearth";
 
 export function HomePage() {
-  const today = new Date();
+  // SSR-safe: defer "now" to after mount so server-rendered HTML matches the
+  // first client render (week boundaries depend on the current date).
+  const [mounted, setMounted] = useState(false);
   const [weekStart, setWeekStart] = useState<Date>(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 }),
+    startOfWeek(new Date(0), { weekStartsOn: 1 }),
   );
-  const [activeDay, setActiveDay] = useState<Date>(() => new Date());
+  const [activeDay, setActiveDay] = useState<Date>(() => new Date(0));
+  const today = mounted ? activeDay : new Date(0);
+  useEffect(() => {
+    setMounted(true);
+    setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+    setActiveDay(new Date());
+  }, []);
   const [selected, setSelected] = useState<HearthEvent | null>(null);
   const [quickAddDate, setQuickAddDate] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);

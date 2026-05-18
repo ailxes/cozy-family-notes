@@ -1,45 +1,53 @@
+import { supabase } from "@/integrations/supabase/client";
 import type { EventCategory } from "./hearth";
 
 export interface ParsedEvent {
   title: string;
   description?: string;
   start_datetime: string;
-  end_datetime?: string;
+  end_datetime?: string | null;
   all_day?: boolean;
   category: EventCategory;
-  preparation_notes?: string;
+  preparation_notes?: string | null;
 }
+
+export type ParseConfidence = "high" | "medium" | "low";
 
 export interface ParseFlyerResponse {
   events: ParsedEvent[];
+  confidence: ParseConfidence;
+  raw_text_observed?: string;
 }
 
 /**
- * Mock flyer parser. Replace with a server function that calls the Anthropic
- * API when wiring real OCR. The shape returned here matches what the
- * confirmation screen expects.
+ * Calls the `parse-flyer` Supabase Edge Function which runs Claude vision
+ * against the uploaded image in Storage.
  */
-export async function parseFlyer(_imageUrl: string): Promise<ParseFlyerResponse> {
-  // Simulate latency so the loading state is visible
-  await new Promise((r) => setTimeout(r, 1400));
+export async function parseFlyer(
+  imagePath: string,
+  householdId: string,
+): Promise<ParseFlyerResponse> {
+  const { data, error } = await supabase.functions.invoke("parse-flyer", {
+    body: { image_path: imagePath, household_id: householdId },
+  });
 
-  const base = new Date();
-  base.setDate(base.getDate() + 4);
-  base.setHours(17, 0, 0, 0);
-  const end = new Date(base);
-  end.setHours(20, 0, 0, 0);
+  if (error) {
+    return {
+      events: [],
+      confidence: "low",
+      raw_text_observed: `Request failed: ${error.message}`,
+    };
+  }
+
+  const events = Array.isArray(data?.events) ? (data.events as ParsedEvent[]) : [];
+  const confidence: ParseConfidence =
+    data?.confidence === "high" || data?.confidence === "medium" || data?.confidence === "low"
+      ? data.confidence
+      : "low";
 
   return {
-    events: [
-      {
-        title: "Spring Carnival",
-        start_datetime: base.toISOString(),
-        end_datetime: end.toISOString(),
-        all_day: false,
-        category: "school",
-        description: "Annual spring carnival with games and food trucks",
-        preparation_notes: "Bring cash for food trucks",
-      },
-    ],
+    events,
+    confidence,
+    raw_text_observed: typeof data?.raw_text_observed === "string" ? data.raw_text_observed : "",
   };
 }
