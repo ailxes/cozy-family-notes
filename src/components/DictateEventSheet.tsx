@@ -92,7 +92,6 @@ export function DictateEventSheet({ open, onOpenChange, onSaved }: Props) {
   const [confidence, setConfidence] = useState<ParseConfidence>("medium");
   const [rawText, setRawText] = useState("");
   const [saving, setSaving] = useState(false);
-  const [manualOpen, setManualOpen] = useState(false);
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const [supported, setSupported] = useState(true);
   const [manualOpen, setManualOpen] = useState(false);
