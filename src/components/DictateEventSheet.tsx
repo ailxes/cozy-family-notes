@@ -191,7 +191,6 @@ export function DictateEventSheet({ open, onOpenChange, onSaved }: Props) {
     // pass through description via state
     setManualDescription(text);
   };
-  const [manualDescription, setManualDescription] = useState("");
 
   const updateDraft = (i: number, patch: Partial<DraftEvent>) =>
     setDrafts((d) => d.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
