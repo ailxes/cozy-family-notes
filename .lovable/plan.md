@@ -1,55 +1,61 @@
-## 1. Fix "Add to calendar" not appearing
+# Plan
 
-Likely cause: the insert succeeds, but the events query is keyed to the currently-viewed week (`["events", weekStart.toISOString()]`). When the new event is on a different week, the home screen looks unchanged so it feels like nothing happened.
+## 1. Make Month the default view
 
-Fix:
-- After a successful save in `AddEventSheet` and `UploadFlyerSheet`, jump the calendar to the week of the newly added event (lift a `onSaved(date)` callback from `HomePage` → both sheets → set `weekStart` and `activeDay`).
-- Surface any insert errors more loudly (console.error + toast with the actual Postgres message) so future failures are visible.
-- Add a small `console.debug` around insert for diagnostic purposes if it still fails after the requery fix.
+- `HomePage.tsx`: initial `view` state becomes `"month"`. `localStorage` key `hearth:view` still wins if previously set, so existing users aren't disrupted.
+- Initial `anchor` initialized to `startOfMonth(now)` instead of `startOfWeek(now)`.
 
-## 2. Priority field on events
+## 2. Google-Calendar-style month view (mobile-first)
 
-Database (migration):
-- Add `priority` enum `('low','normal','high')` with default `'normal'` to `public.events`.
-- Index on `(household_id, priority, start_datetime)` for the priorities panel query.
+Rework `MonthView.tsx`:
 
-Frontend:
-- Extend `HearthEvent`, `EventFormValues`, and `DraftEvent` types with `priority`.
-- Add a `PriorityPicker` (3 chip buttons: Low / Normal / High) inside `EventForm` and in the per-event card in `UploadFlyerSheet`'s confirm step.
-- Color-coordinate priority in `src/styles.css` (new tokens `--priority-high`, `--priority-normal`, `--priority-low` with foregrounds) and render a small priority dot/badge on `EventCard`.
+- **Grid**: full-bleed 7-col grid, no rounded card per cell. Thin top border per row, thin left border per cell — flat, dense, like Google Calendar.
+- **Cells**: fixed min-height instead of aspect-square so mobile rows are tighter and uniform. Day number top-left; today gets a filled circle behind the number (primary).
+- **Out-of-month days**: muted number, no events shown.
+- **Event chips**: small colored bars (category color), 1 line, truncated. Mobile (`< sm`) shows compact **dots** when >2 events (Google Calendar mobile pattern); ≥ sm shows up to 3 chip rows + "+N".
+- **Selected day**: tapping a day selects it (ring highlight) and reveals an agenda list **below the grid** showing that day's events (Google month-mobile pattern). Second tap on the same day (or "Open week") jumps to week view.
+- Week headers stay (S M T W T F S, Mon-first per existing setup).
+- `WeekStrip` hidden in month view (already conditional).
 
-## 3. Top reminders panel (priorities)
+Files: `MonthView.tsx` rewrite, small CSS additions in `styles.css` for the today-circle and selected-ring tokens.
 
-- New `PrioritiesPanel` component placed in `HomePage` header row to the right of the month title (stacks under it on mobile).
-- Query: upcoming events with `priority = 'high'` from today forward, limit 5, ordered by `start_datetime`.
-- Each item: colored dot, title, relative date ("Today", "Tomorrow", "Fri May 22"). Click → open `EventDrawer`.
-- Empty state: "No high priorities".
+## 3. Voice dictation → Claude → event(s)
 
-## 4. Week / Month view toggle
+New flow that mirrors the flyer pipeline.
 
-- Add a segmented toggle ("Week" | "Month") in the header.
-- Persist choice in `localStorage` (`hearth:view`).
-- New `MonthView` component:
-  - Renders a 6×7 grid for the visible month using `date-fns` (`startOfMonth`, `endOfMonth`, `eachDayOfInterval` padded to whole weeks).
-  - Each cell shows the day number, up to 3 event chips (category-colored), and a "+N more" affordance.
-  - Cell click → opens that day's events in a sheet (reusing `EventCard`); empty cell click → quick-add for that date.
-- Update HomePage navigation: prev/next moves by week in Week view, by month in Month view; "Today" jumps back to current period. The query range expands to the visible month when in Month view.
+**UI**
+- `AddActionFab.tsx`: add a 4th option **"Dictate event"** (mic icon).
+- New `DictateEventSheet.tsx` (bottom sheet):
+  - Big mic button: tap to start/stop. Uses **Web Speech API** (`webkitSpeechRecognition` / `SpeechRecognition`) for live transcription — no extra dependency, works in Chrome/Safari iOS 14.5+.
+  - Live transcript shown as it streams.
+  - Fallback if API unavailable: textarea + "Transcribe with voice not supported on this browser — type instead."
+  - "Use this" button → calls the parser, then opens the existing event-confirmation UI (reuse `UploadFlyerSheet`'s confirmation list pattern, extracted into a shared `EventDraftsConfirm` component so both flyer and dictation share it).
+  - Each parsed event editable (title/date/time/category/priority) before "Add all to calendar".
 
-## 5. Camera capture (separate from upload + manual)
+**Backend**
+- Extend the existing `parse-flyer` edge function OR add a sibling `parse-dictation` function. Cleaner: new function `parse-dictation/index.ts` that accepts `{ transcript: string }` and calls Claude (Anthropic API, reusing `ANTHROPIC_API_KEY`) with a text-only prompt:
+  - System prompt: today's date, timezone, instruct to output the same JSON schema `{ events, confidence, raw_text_observed }` as the flyer parser.
+  - Resolves relative phrases ("tomorrow at 3", "next Friday morning", "every Tuesday for swim" → still single events for now; recurrence flagged in raw_text).
+- Uses `claude-sonnet-4-5` (same model as flyer).
+- Returns the same shape so the confirmation UI is reused unchanged.
 
-- In `AddActionFab`'s sheet, split the existing "Upload a photo" option into two:
-  1. **Take a photo** — opens the camera (`<input type="file" accept="image/*" capture="environment">`).
-  2. **Choose from library** — file picker without `capture`.
-  3. **Add manually** — unchanged.
-- Refactor `UploadFlyerSheet` to accept a `mode: "camera" | "library"` prop that controls the `capture` attribute, and auto-trigger the file input on open so the camera launches immediately in camera mode.
+**Client wiring**
+- `src/lib/parseFlyer.ts`: keep as-is. Add `src/lib/parseDictation.ts` that invokes the new function.
+- `DictateEventSheet` calls `parseDictation(transcript)` → on success opens drafts confirmation → on save inserts via the existing `events` insert path with `source: "dictation"`.
 
-## Files touched
+## 4. Out of scope
+- True realtime streaming STT (ElevenLabs) — Web Speech API is free and sufficient for v1. Can upgrade later.
+- Recurring events.
+- Drag/resize on month view.
 
-- New: `supabase/migrations/<ts>_event_priority.sql`, `src/components/MonthView.tsx`, `src/components/PrioritiesPanel.tsx`, `src/components/PriorityPicker.tsx`, `src/components/ViewToggle.tsx`.
-- Edited: `src/lib/hearth.ts`, `src/components/HomePage.tsx`, `src/components/EventForm.tsx`, `src/components/EventCard.tsx`, `src/components/AddEventSheet.tsx`, `src/components/UploadFlyerSheet.tsx`, `src/components/AddActionFab.tsx`, `src/styles.css`.
+## Files
 
-## Out of scope
+**Edit**: `src/components/HomePage.tsx`, `src/components/MonthView.tsx`, `src/components/AddActionFab.tsx`, `src/styles.css`.
+**Create**: `src/components/DictateEventSheet.tsx`, `src/components/EventDraftsConfirm.tsx` (extracted shared UI), `src/lib/parseDictation.ts`, `supabase/functions/parse-dictation/index.ts`.
+**Migration**: none required. (Optional: extend `source` check to allow `'dictation'` — current column appears to be free-text, so no migration needed.)
 
-- Reminder notifications (push/email).
-- Editing existing events' priority from the calendar without opening the form.
-- Drag-and-drop on month view.
+## Technical notes
+
+- Web Speech API: `const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)(); rec.continuous = true; rec.interimResults = true;` Guard with feature detection; show fallback UI otherwise. Request mic permission on first tap.
+- The new edge function must be added to `supabase/config.toml` with `verify_jwt = false` matching `parse-flyer`'s settings.
+- Reuse the same JSON-extraction + error-toast pattern from `parse-flyer` to keep behavior consistent.

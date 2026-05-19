@@ -38,20 +38,22 @@ import { SHARED_HOUSEHOLD_ID, type HearthEvent } from "@/lib/hearth";
 
 export function HomePage() {
   const [mounted, setMounted] = useState(false);
-  const [view, setView] = useState<CalendarView>("week");
-  const [anchor, setAnchor] = useState<Date>(() => new Date(0)); // week or month anchor
+  const [view, setView] = useState<CalendarView>("month");
+  const [anchor, setAnchor] = useState<Date>(() => new Date(0));
   const [activeDay, setActiveDay] = useState<Date>(() => new Date(0));
   const today = mounted ? activeDay : new Date(0);
 
   useEffect(() => {
-    setMounted(true);
     const now = new Date();
-    setAnchor(startOfWeek(now, { weekStartsOn: 1 }));
-    setActiveDay(now);
+    let initialView: CalendarView = "month";
     try {
       const stored = localStorage.getItem("hearth:view");
-      if (stored === "week" || stored === "month") setView(stored);
+      if (stored === "week" || stored === "month") initialView = stored;
     } catch {}
+    setView(initialView);
+    setAnchor(initialView === "week" ? startOfWeek(now, { weekStartsOn: 1 }) : startOfMonth(now));
+    setActiveDay(now);
+    setMounted(true);
   }, []);
 
   const [selected, setSelected] = useState<HearthEvent | null>(null);
@@ -165,10 +167,12 @@ export function HomePage() {
       <div className="px-5 md:px-6 pt-6 pb-3 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex items-end justify-between gap-3 md:flex-1 min-w-0">
           <div className="min-w-0">
-            <h1 className="font-serif text-3xl md:text-4xl font-semibold leading-tight">
-              {headerTitle}
+            <h1 className="font-serif text-3xl md:text-4xl font-semibold leading-tight" suppressHydrationWarning>
+              {mounted ? headerTitle : ""}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">{headerSub}</p>
+            <p className="text-sm text-muted-foreground mt-1 min-h-[1.25rem]" suppressHydrationWarning>
+              {mounted ? headerSub : ""}
+            </p>
             <div className="mt-3">
               <ViewToggle value={view} onChange={setViewPersist} />
             </div>
@@ -241,9 +245,11 @@ export function HomePage() {
           monthStart={anchor}
           today={today}
           events={events ?? []}
+          onEventClick={setSelected}
           onDayClick={(d) => {
             setActiveDay(d);
             setView("week");
+            try { localStorage.setItem("hearth:view", "week"); } catch {}
             setAnchor(startOfWeek(d, { weekStartsOn: 1 }));
           }}
         />

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Camera, ImagePlus, PencilLine } from "lucide-react";
+import { Plus, Camera, ImagePlus, PencilLine, Mic } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sheet";
 import { AddEventSheet } from "./AddEventSheet";
 import { UploadFlyerSheet } from "./UploadFlyerSheet";
+import { DictateEventSheet } from "./DictateEventSheet";
 
 interface Props {
   initialDate?: string;
@@ -28,12 +29,13 @@ export function AddActionFab({
   const [addOpen, setAddOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadMode, setUploadMode] = useState<"camera" | "library">("library");
+  const [dictateOpen, setDictateOpen] = useState(false);
 
-  const pick = (which: "camera" | "library" | "manual") => {
+  const pick = (which: "camera" | "library" | "manual" | "dictate") => {
     setOpen(false);
-    if (which === "manual") {
-      setAddOpen(true);
-    } else {
+    if (which === "manual") setAddOpen(true);
+    else if (which === "dictate") setDictateOpen(true);
+    else {
       setUploadMode(which);
       setUploadOpen(true);
     }
@@ -58,6 +60,20 @@ export function AddActionFab({
             <SheetTitle className="font-serif text-2xl">Add to the week</SheetTitle>
           </SheetHeader>
           <div className="space-y-3 pt-2">
+            <button
+              onClick={() => pick("dictate")}
+              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-primary/10 hover:bg-primary/15 transition-colors text-left"
+            >
+              <div className="w-11 h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
+                <Mic className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-medium">Dictate with voice</div>
+                <div className="text-xs text-muted-foreground">
+                  Say it out loud — AI handles the rest
+                </div>
+              </div>
+            </button>
             <button
               onClick={() => pick("camera")}
               className="w-full flex items-center gap-4 p-4 rounded-2xl bg-accent/40 hover:bg-accent/60 transition-colors text-left"
@@ -114,6 +130,11 @@ export function AddActionFab({
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         mode={uploadMode}
+        onSaved={onSaved}
+      />
+      <DictateEventSheet
+        open={dictateOpen}
+        onOpenChange={setDictateOpen}
         onSaved={onSaved}
       />
     </>

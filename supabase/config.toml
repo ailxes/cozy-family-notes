@@ -2,3 +2,6 @@ project_id = "rlcpfitsmmbbynurbaty"
 
 [functions.parse-flyer]
 verify_jwt = false
+
+[functions.parse-dictation]
+verify_jwt = false
