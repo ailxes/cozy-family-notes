@@ -43,7 +43,9 @@ export function HomePage() {
   const [view, setView] = useState<CalendarView>("month");
   const [anchor, setAnchor] = useState<Date>(() => new Date(0));
   const [activeDay, setActiveDay] = useState<Date>(() => new Date(0));
-  const today = mounted ? activeDay : new Date(0);
+  // `today` is the real current calendar date — used to draw the green
+  // "today" highlight. Stable on the server (epoch) until mount.
+  const today = mounted ? new Date() : new Date(0);
   const isMobile = useIsMobile();
 
   useEffect(() => {
