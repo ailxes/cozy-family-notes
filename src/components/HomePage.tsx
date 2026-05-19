@@ -167,10 +167,12 @@ export function HomePage() {
       <div className="px-5 md:px-6 pt-6 pb-3 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex items-end justify-between gap-3 md:flex-1 min-w-0">
           <div className="min-w-0">
-            <h1 className="font-serif text-3xl md:text-4xl font-semibold leading-tight">
-              {headerTitle}
+            <h1 className="font-serif text-3xl md:text-4xl font-semibold leading-tight" suppressHydrationWarning>
+              {mounted ? headerTitle : ""}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">{headerSub}</p>
+            <p className="text-sm text-muted-foreground mt-1 min-h-[1.25rem]" suppressHydrationWarning>
+              {mounted ? headerSub : ""}
+            </p>
             <div className="mt-3">
               <ViewToggle value={view} onChange={setViewPersist} />
             </div>
