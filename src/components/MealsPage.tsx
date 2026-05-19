@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
+  Camera,
   CalendarPlus,
+  Loader2,
   Pencil,
   Plus,
   Trash2,
@@ -37,6 +39,9 @@ import {
   loadMeals,
   saveMeals,
 } from "@/lib/meals";
+import { parseRecipe } from "@/lib/parseRecipe";
+import { supabase } from "@/integrations/supabase/client";
+import { SHARED_HOUSEHOLD_ID } from "@/lib/hearth";
 
 interface FormState {
   id: string | null;
@@ -58,6 +63,8 @@ export function MealsPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [scheduleMeal, setScheduleMeal] = useState<Meal | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMeals(loadMeals());
@@ -129,11 +136,70 @@ export function MealsPage() {
     toast.success("Meal removed");
   };
 
+  const onPhotoPick = async (file: File) => {
+    setParsing(true);
+    try {
+      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+      const path = `recipes/${SHARED_HOUSEHOLD_ID}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("flyers")
+        .upload(path, file, { contentType: file.type || "image/jpeg" });
+      if (upErr) throw upErr;
+
+      await supabase.from("uploaded_images").insert({
+        household_id: SHARED_HOUSEHOLD_ID,
+        storage_path: path,
+      });
+
+      const result = await parseRecipe(path, SHARED_HOUSEHOLD_ID);
+
+      if (!result.meal) {
+        toast.error(
+          result.confidence === "low"
+            ? "Couldn't read that recipe. Try a clearer photo or add it manually."
+            : "No meal found in the photo.",
+        );
+        return;
+      }
+
+      setForm({
+        id: null,
+        name: result.meal.name,
+        type: result.meal.type,
+        notes: result.meal.notes,
+      });
+      setEditorOpen(true);
+      toast.success("Recipe read — review and save");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      console.error("[MealsPage] photo parse failed", err);
+      toast.error(msg);
+    } finally {
+      setParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const today = format(new Date(), "yyyy-MM-dd");
+
+  const openPhotoPicker = () => fileInputRef.current?.click();
 
   return (
     <AppShell>
-      <div className="px-5 md:px-6 pt-6 pb-6 flex items-start justify-between gap-4">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPhotoPick(f);
+        }}
+      />
+
+      <div className="px-5 md:px-6 pt-6 pb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="font-serif text-3xl md:text-4xl font-semibold leading-tight">
             Meal menu
@@ -143,13 +209,25 @@ export function MealsPage() {
             calendar.
           </p>
         </div>
-        <Button
-          onClick={openNew}
-          className="h-11 rounded-full px-4 shrink-0"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          New meal
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={openPhotoPicker}
+            disabled={parsing}
+            className="h-11 rounded-full px-4"
+          >
+            {parsing ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-1" />
+            ) : (
+              <Camera className="w-4 h-4 mr-1" />
+            )}
+            {parsing ? "Reading..." : "Add by photo"}
+          </Button>
+          <Button onClick={openNew} className="h-11 rounded-full px-4">
+            <Plus className="w-4 h-4 mr-1" />
+            New meal
+          </Button>
+        </div>
       </div>
 
       {mounted && meals.length === 0 ? (
@@ -160,12 +238,28 @@ export function MealsPage() {
           </h3>
           <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
             Add favorites like "Sheet-pan chicken" or "Taco Tuesday" so you can
-            drop them on any day of the week.
+            drop them on any day of the week. Or snap a photo of a recipe and
+            we'll pull out the details.
           </p>
-          <Button onClick={openNew} className="mt-5 rounded-full">
-            <Plus className="w-4 h-4 mr-1" />
-            Add your first meal
-          </Button>
+          <div className="mt-5 flex items-center justify-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              onClick={openPhotoPicker}
+              disabled={parsing}
+              className="rounded-full"
+            >
+              {parsing ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+              ) : (
+                <Camera className="w-4 h-4 mr-1" />
+              )}
+              {parsing ? "Reading..." : "Add by photo"}
+            </Button>
+            <Button onClick={openNew} className="rounded-full">
+              <Plus className="w-4 h-4 mr-1" />
+              Add your first meal
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="px-5 md:px-6 pb-12 space-y-8">

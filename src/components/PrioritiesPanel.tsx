@@ -36,7 +36,7 @@ export function PrioritiesPanel({ onSelect }: Props) {
   const items = data ?? [];
 
   return (
-    <div className="rounded-2xl border border-border bg-card/70 p-3 w-full md:w-72 shrink-0">
+    <div className="rounded-2xl border border-border bg-card/70 p-3 w-full">
       <div className="flex items-center gap-2 px-1 pb-2">
         <Flag className="w-3.5 h-3.5 text-prio-high" />
         <h2 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
