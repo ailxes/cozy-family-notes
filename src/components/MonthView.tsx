@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -10,7 +10,6 @@ import {
   startOfWeek,
 } from "date-fns";
 import { CATEGORY_STYLES, type HearthEvent } from "@/lib/hearth";
-import { EventCard } from "./EventCard";
 
 interface Props {
   monthStart: Date;
@@ -20,9 +19,7 @@ interface Props {
   onEventClick?: (event: HearthEvent) => void;
 }
 
-export function MonthView({ monthStart, today, events, onDayClick, onEventClick }: Props) {
-  const [selected, setSelected] = useState<Date | null>(null);
-
+export function MonthView({ monthStart, today, events, onDayClick }: Props) {
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(monthStart), { weekStartsOn: 1 });
     const end = endOfWeek(endOfMonth(monthStart), { weekStartsOn: 1 });
@@ -48,16 +45,6 @@ export function MonthView({ monthStart, today, events, onDayClick, onEventClick 
   }, [events]);
 
   const weekHeads = ["M", "T", "W", "T", "F", "S", "S"];
-  const selectedKey = selected ? format(selected, "yyyy-MM-dd") : null;
-  const selectedEvents = selectedKey ? byDay.get(selectedKey) ?? [] : [];
-
-  const handleClick = (date: Date) => {
-    if (selected && isSameDay(selected, date)) {
-      onDayClick(date);
-    } else {
-      setSelected(date);
-    }
-  };
 
   return (
     <div className="flex flex-col">
@@ -78,16 +65,15 @@ export function MonthView({ monthStart, today, events, onDayClick, onEventClick 
             const dayEvents = byDay.get(key) ?? [];
             const inMonth = isSameMonth(date, monthStart);
             const isToday = isSameDay(date, today);
-            const isSelected = selected && isSameDay(selected, date);
             const mobileMax = 2;
             const desktopMax = 3;
             return (
               <button
                 key={key}
-                onClick={() => handleClick(date)}
-                className={`relative min-h-[110px] sm:min-h-[120px] border-r border-b border-border/60 p-1 sm:p-1.5 text-left transition-colors flex flex-col gap-1 overflow-hidden ${
-                  isSelected ? "bg-primary/10" : "hover:bg-secondary/40"
-                } ${inMonth ? "" : "bg-muted/20"}`}
+                onClick={() => onDayClick(date)}
+                className={`relative min-h-[110px] sm:min-h-[120px] border-r border-b border-border/60 p-1 sm:p-1.5 text-left transition-colors flex flex-col gap-1 overflow-hidden hover:bg-secondary/40 ${
+                  inMonth ? "" : "bg-muted/20"
+                }`}
               >
                 <div className="flex items-center justify-start">
                   <span
@@ -163,32 +149,6 @@ export function MonthView({ monthStart, today, events, onDayClick, onEventClick 
           })}
         </div>
       </div>
-
-      {/* Agenda for selected day */}
-      {selected && (
-        <div className="px-5 md:px-6 py-5 border-t border-border mt-3">
-          <div className="flex items-baseline justify-between mb-3">
-            <h3 className="font-serif text-lg font-semibold">
-              {format(selected, "EEEE, MMMM d")}
-            </h3>
-            <button
-              onClick={() => onDayClick(selected)}
-              className="text-xs text-primary hover:underline"
-            >
-              Open week →
-            </button>
-          </div>
-          {selectedEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No events.</p>
-          ) : (
-            <div className="space-y-2">
-              {selectedEvents.map((e) => (
-                <EventCard key={e.id} event={e} onClick={() => onEventClick?.(e)} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

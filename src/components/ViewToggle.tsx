@@ -1,4 +1,4 @@
-export type CalendarView = "week" | "month";
+export type CalendarView = "week" | "month" | "day";
 
 interface Props {
   value: CalendarView;
