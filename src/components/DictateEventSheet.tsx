@@ -95,6 +95,8 @@ export function DictateEventSheet({ open, onOpenChange, onSaved }: Props) {
   const [manualOpen, setManualOpen] = useState(false);
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const [supported, setSupported] = useState(true);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualDescription, setManualDescription] = useState("");
   const qc = useQueryClient();
 
   useEffect(() => {
