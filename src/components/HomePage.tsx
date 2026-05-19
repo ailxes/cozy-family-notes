@@ -38,20 +38,22 @@ import { SHARED_HOUSEHOLD_ID, type HearthEvent } from "@/lib/hearth";
 
 export function HomePage() {
   const [mounted, setMounted] = useState(false);
-  const [view, setView] = useState<CalendarView>("week");
-  const [anchor, setAnchor] = useState<Date>(() => new Date(0)); // week or month anchor
+  const [view, setView] = useState<CalendarView>("month");
+  const [anchor, setAnchor] = useState<Date>(() => new Date(0));
   const [activeDay, setActiveDay] = useState<Date>(() => new Date(0));
   const today = mounted ? activeDay : new Date(0);
 
   useEffect(() => {
-    setMounted(true);
     const now = new Date();
-    setAnchor(startOfWeek(now, { weekStartsOn: 1 }));
-    setActiveDay(now);
+    let initialView: CalendarView = "month";
     try {
       const stored = localStorage.getItem("hearth:view");
-      if (stored === "week" || stored === "month") setView(stored);
+      if (stored === "week" || stored === "month") initialView = stored;
     } catch {}
+    setView(initialView);
+    setAnchor(initialView === "week" ? startOfWeek(now, { weekStartsOn: 1 }) : startOfMonth(now));
+    setActiveDay(now);
+    setMounted(true);
   }, []);
 
   const [selected, setSelected] = useState<HearthEvent | null>(null);
