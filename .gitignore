@@ -20,6 +20,10 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Local tooling
+.claude/
+package-lock.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
