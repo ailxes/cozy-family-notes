@@ -21,6 +21,7 @@ import { AppShell } from "./AppShell";
 import { WeekView } from "./WeekView";
 import { WeekStrip } from "./WeekStrip";
 import { MonthView } from "./MonthView";
+import { DayView } from "./DayView";
 import { PrioritiesPanel } from "./PrioritiesPanel";
 import { ViewToggle, type CalendarView } from "./ViewToggle";
 import { EventDrawer } from "./EventDrawer";
@@ -69,17 +70,27 @@ export function HomePage() {
 
   const setViewPersist = (v: CalendarView) => {
     setView(v);
-    try {
-      localStorage.setItem("hearth:view", v);
-    } catch {}
+    // Only persist toggle-selectable views; "day" is contextual to a tapped date.
+    if (v === "week" || v === "month") {
+      try {
+        localStorage.setItem("hearth:view", v);
+      } catch {}
+    }
     // realign anchor for the new view
     const ref = activeDay;
     if (v === "week") setAnchor(startOfWeek(ref, { weekStartsOn: 1 }));
-    else setAnchor(startOfMonth(ref));
+    else if (v === "month") setAnchor(startOfMonth(ref));
+    else setAnchor(ref);
   };
 
   // Query range matches view
   const range = (() => {
+    if (view === "day") {
+      const start = new Date(activeDay);
+      start.setHours(0, 0, 0, 0);
+      const end = addDays(start, 1);
+      return { start, end };
+    }
     if (view === "week") {
       const start = startOfWeek(anchor, { weekStartsOn: 1 });
       return { start, end: addDays(start, 7) };
@@ -119,33 +130,59 @@ export function HomePage() {
   }, [qc]);
 
   const isCurrentPeriod =
-    view === "week"
-      ? isSameDay(
-          startOfWeek(anchor, { weekStartsOn: 1 }),
-          startOfWeek(new Date(), { weekStartsOn: 1 }),
-        )
-      : isSameDay(startOfMonth(anchor), startOfMonth(new Date()));
+    view === "day"
+      ? isSameDay(activeDay, new Date())
+      : view === "week"
+        ? isSameDay(
+            startOfWeek(anchor, { weekStartsOn: 1 }),
+            startOfWeek(new Date(), { weekStartsOn: 1 }),
+          )
+        : isSameDay(startOfMonth(anchor), startOfMonth(new Date()));
 
   const goToDate = (d: Date) => {
     if (view === "week") setAnchor(startOfWeek(d, { weekStartsOn: 1 }));
-    else setAnchor(startOfMonth(d));
+    else if (view === "month") setAnchor(startOfMonth(d));
+    else setAnchor(d);
     setActiveDay(d);
     setDatePickerOpen(false);
   };
 
   const goPrev = () => {
-    if (view === "week") setAnchor((a) => addWeeks(a, -1));
-    else setAnchor((a) => addMonths(a, -1));
+    if (view === "day") {
+      const next = addDays(activeDay, -1);
+      setActiveDay(next);
+      setAnchor(next);
+    } else if (view === "week") {
+      setAnchor((a) => addWeeks(a, -1));
+    } else {
+      setAnchor((a) => addMonths(a, -1));
+    }
   };
   const goNext = () => {
-    if (view === "week") setAnchor((a) => addWeeks(a, 1));
-    else setAnchor((a) => addMonths(a, 1));
+    if (view === "day") {
+      const next = addDays(activeDay, 1);
+      setActiveDay(next);
+      setAnchor(next);
+    } else if (view === "week") {
+      setAnchor((a) => addWeeks(a, 1));
+    } else {
+      setAnchor((a) => addMonths(a, 1));
+    }
   };
   const goToday = () => {
     const now = new Date();
     if (view === "week") setAnchor(startOfWeek(now, { weekStartsOn: 1 }));
-    else setAnchor(startOfMonth(now));
+    else if (view === "month") setAnchor(startOfMonth(now));
+    else setAnchor(now);
     setActiveDay(now);
+  };
+
+  const backToMonth = () => {
+    setView("month");
+    try {
+      localStorage.setItem("hearth:view", "month");
+    } catch {}
+    setAnchor(startOfMonth(activeDay));
   };
 
   // After save: jump to the new event's date, but keep the user's current view.
@@ -166,30 +203,33 @@ export function HomePage() {
   };
 
   const headerTitle =
-    view === "week"
-      ? format(anchor, "MMMM yyyy")
+    view === "day"
+      ? format(activeDay, "MMMM yyyy")
       : format(anchor, "MMMM yyyy");
   const headerSub =
-    view === "week"
-      ? `Week of ${format(startOfWeek(anchor, { weekStartsOn: 1 }), "MMM d")} – ${format(addDays(startOfWeek(anchor, { weekStartsOn: 1 }), 6), "MMM d")}`
-      : `${format(startOfMonth(anchor), "MMM d")} – ${format(endOfMonth(anchor), "MMM d")}`;
+    view === "day"
+      ? format(activeDay, "EEEE, MMM d")
+      : view === "week"
+        ? `Week of ${format(startOfWeek(anchor, { weekStartsOn: 1 }), "MMM d")} – ${format(addDays(startOfWeek(anchor, { weekStartsOn: 1 }), 6), "MMM d")}`
+        : `${format(startOfMonth(anchor), "MMM d")} – ${format(endOfMonth(anchor), "MMM d")}`;
 
   return (
     <AppShell>
-      <div className="px-5 md:px-6 pt-6 pb-3 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div className="flex items-end justify-between gap-3 md:flex-1 min-w-0">
-          <div className="min-w-0">
-            <h1 className="font-serif text-3xl md:text-4xl font-semibold leading-tight" suppressHydrationWarning>
-              {mounted ? headerTitle : ""}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1 min-h-[1.25rem]" suppressHydrationWarning>
-              {mounted ? headerSub : ""}
-            </p>
+      <div className="px-5 md:px-6 pt-6 pb-3 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-serif text-3xl md:text-4xl font-semibold leading-tight" suppressHydrationWarning>
+            {mounted ? headerTitle : ""}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 min-h-[1.25rem]" suppressHydrationWarning>
+            {mounted ? headerSub : ""}
+          </p>
+          {view !== "day" && (
             <div className="mt-3">
               <ViewToggle value={view} onChange={setViewPersist} />
             </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
             <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
               <PopoverTrigger asChild>
                 <button
@@ -211,7 +251,13 @@ export function HomePage() {
             <button
               onClick={goPrev}
               className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center"
-              aria-label={view === "week" ? "Previous week" : "Previous month"}
+              aria-label={
+                view === "day"
+                  ? "Previous day"
+                  : view === "week"
+                    ? "Previous week"
+                    : "Previous month"
+              }
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -225,17 +271,20 @@ export function HomePage() {
                 Today
               </Button>
             )}
-            <button
-              onClick={goNext}
-              className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center"
-              aria-label={view === "week" ? "Next week" : "Next month"}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={goNext}
+            className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center"
+            aria-label={
+              view === "day"
+                ? "Next day"
+                : view === "week"
+                  ? "Next week"
+                  : "Next month"
+            }
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
-
-        <PrioritiesPanel onSelect={setSelected} />
       </div>
 
       {view === "week" && (
@@ -260,10 +309,18 @@ export function HomePage() {
           onEventClick={setSelected}
           onDayClick={(d) => {
             setActiveDay(d);
-            setView("week");
-            try { localStorage.setItem("hearth:view", "week"); } catch {}
-            setAnchor(startOfWeek(d, { weekStartsOn: 1 }));
+            setAnchor(d);
+            setView("day");
           }}
+        />
+      ) : view === "day" ? (
+        <DayView
+          date={activeDay}
+          today={today}
+          events={events ?? []}
+          onEventClick={setSelected}
+          onEmptyAdd={(date) => setQuickAddDate(format(date, "yyyy-MM-dd"))}
+          onBack={backToMonth}
         />
       ) : events && events.length === 0 ? (
         <div className="mx-5 my-6 rounded-3xl bg-card border border-border p-10 text-center">
@@ -282,6 +339,10 @@ export function HomePage() {
           onEmptyDayAdd={(date) => setQuickAddDate(format(date, "yyyy-MM-dd"))}
         />
       )}
+
+      <div className="px-5 md:px-6 pt-6 pb-3">
+        <PrioritiesPanel onSelect={setSelected} />
+      </div>
 
       <AddActionFab onSaved={onSaved} />
       <AddEventSheet

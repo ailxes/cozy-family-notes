@@ -3,11 +3,11 @@ import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trash2, Loader2, Pencil, X, Camera } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -113,15 +113,12 @@ export function EventDrawer({ event, onOpenChange }: Props) {
 
   return (
     <>
-      <Sheet open={!!event} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="bottom"
-          className="h-[92vh] rounded-t-3xl p-0 flex flex-col md:max-w-lg md:mx-auto"
-        >
-          <SheetHeader className="px-6 pt-6 pb-2 flex-row items-center justify-between space-y-0">
-            <SheetTitle className="font-serif text-2xl">
+      <Drawer open={!!event} onOpenChange={onOpenChange}>
+        <DrawerContent className="h-[92vh] rounded-t-3xl p-0 flex flex-col md:max-w-lg md:mx-auto">
+          <DrawerHeader className="px-6 pt-2 pb-2 flex-row items-center justify-between space-y-0 text-left">
+            <DrawerTitle className="font-serif text-2xl">
               {editing ? "Edit event" : "Event details"}
-            </SheetTitle>
+            </DrawerTitle>
             {!editing && (
               <button
                 onClick={() => setEditing(true)}
@@ -131,7 +128,7 @@ export function EventDrawer({ event, onOpenChange }: Props) {
                 <Pencil className="w-4 h-4 text-muted-foreground" />
               </button>
             )}
-          </SheetHeader>
+          </DrawerHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {editing && values ? (
@@ -228,8 +225,8 @@ export function EventDrawer({ event, onOpenChange }: Props) {
               </Button>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent className="rounded-2xl">

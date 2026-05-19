@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.parse-dictation]
 verify_jwt = false
+
+[functions.parse-recipe]
+verify_jwt = false
