@@ -245,9 +245,11 @@ export function HomePage() {
           monthStart={anchor}
           today={today}
           events={events ?? []}
+          onEventClick={setSelected}
           onDayClick={(d) => {
             setActiveDay(d);
             setView("week");
+            try { localStorage.setItem("hearth:view", "week"); } catch {}
             setAnchor(startOfWeek(d, { weekStartsOn: 1 }));
           }}
         />
