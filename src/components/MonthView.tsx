@@ -61,7 +61,7 @@ export function MonthView({ monthStart, today, events, onDayClick, onEventClick 
 
   return (
     <div className="flex flex-col">
-      <div className="px-2 md:px-4">
+      <div className="px-1 sm:px-4">
         <div className="grid grid-cols-7">
           {weekHeads.map((d, i) => (
             <div
@@ -79,15 +79,17 @@ export function MonthView({ monthStart, today, events, onDayClick, onEventClick 
             const inMonth = isSameMonth(date, monthStart);
             const isToday = isSameDay(date, today);
             const isSelected = selected && isSameDay(selected, date);
+            const mobileMax = 2;
+            const desktopMax = 3;
             return (
               <button
                 key={key}
                 onClick={() => handleClick(date)}
-                className={`relative min-h-[68px] sm:min-h-[96px] border-r border-b border-border/60 p-1 text-left transition-colors flex flex-col gap-1 overflow-hidden ${
+                className={`relative min-h-[110px] sm:min-h-[120px] border-r border-b border-border/60 p-1 sm:p-1.5 text-left transition-colors flex flex-col gap-1 overflow-hidden ${
                   isSelected ? "bg-primary/10" : "hover:bg-secondary/40"
                 } ${inMonth ? "" : "bg-muted/20"}`}
               >
-                <div className="flex items-center justify-center sm:justify-start">
+                <div className="flex items-center justify-start">
                   <span
                     className={`inline-flex items-center justify-center text-xs font-semibold tabular-nums ${
                       isToday
@@ -101,50 +103,59 @@ export function MonthView({ monthStart, today, events, onDayClick, onEventClick 
                   </span>
                 </div>
 
-                {/* Mobile: dots */}
                 {inMonth && dayEvents.length > 0 && (
-                  <div className="sm:hidden flex items-center justify-center gap-0.5 mt-auto pb-1">
-                    {dayEvents.slice(0, 3).map((e, idx) => {
-                      const s = CATEGORY_STYLES[e.category];
-                      return (
-                        <span
-                          key={idx}
-                          className={`w-1.5 h-1.5 rounded-full ${s.dot}`}
-                        />
-                      );
-                    })}
-                    {dayEvents.length > 3 && (
-                      <span className="text-[8px] text-muted-foreground ml-0.5">
-                        +{dayEvents.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Desktop/tablet: chip bars */}
-                {inMonth && dayEvents.length > 0 && (
-                  <div className="hidden sm:flex flex-col gap-0.5 min-h-0">
-                    {dayEvents.slice(0, 3).map((e) => {
-                      const s = CATEGORY_STYLES[e.category];
-                      return (
-                        <div
-                          key={e.id}
-                          className={`text-[10px] truncate rounded px-1 py-0.5 ${s.bg} ${s.text}`}
-                        >
-                          {!e.all_day && (
-                            <span className="font-medium mr-1">
-                              {format(new Date(e.start_datetime), "h:mma").toLowerCase()}
-                            </span>
-                          )}
-                          {e.title}
+                  <div className="flex flex-col gap-0.5 min-h-0">
+                    {/* Mobile chips */}
+                    <div className="sm:hidden flex flex-col gap-0.5">
+                      {dayEvents.slice(0, mobileMax).map((e) => {
+                        const s = CATEGORY_STYLES[e.category];
+                        const start = new Date(e.start_datetime);
+                        const time = e.all_day
+                          ? null
+                          : format(start, "mm") === "00"
+                            ? format(start, "ha").toLowerCase()
+                            : format(start, "h:mma").toLowerCase();
+                        return (
+                          <div
+                            key={e.id}
+                            className={`text-[9px] leading-tight truncate rounded px-1 py-0.5 ${s.bg} ${s.text}`}
+                          >
+                            {time && <span className="font-medium mr-0.5">{time}</span>}
+                            {e.title}
+                          </div>
+                        );
+                      })}
+                      {dayEvents.length > mobileMax && (
+                        <div className="text-[9px] text-muted-foreground px-1">
+                          +{dayEvents.length - mobileMax} more
                         </div>
-                      );
-                    })}
-                    {dayEvents.length > 3 && (
-                      <div className="text-[9px] text-muted-foreground px-1">
-                        +{dayEvents.length - 3} more
-                      </div>
-                    )}
+                      )}
+                    </div>
+
+                    {/* Desktop/tablet chips */}
+                    <div className="hidden sm:flex flex-col gap-0.5">
+                      {dayEvents.slice(0, desktopMax).map((e) => {
+                        const s = CATEGORY_STYLES[e.category];
+                        return (
+                          <div
+                            key={e.id}
+                            className={`text-[10px] truncate rounded px-1 py-0.5 ${s.bg} ${s.text}`}
+                          >
+                            {!e.all_day && (
+                              <span className="font-medium mr-1">
+                                {format(new Date(e.start_datetime), "h:mma").toLowerCase()}
+                              </span>
+                            )}
+                            {e.title}
+                          </div>
+                        );
+                      })}
+                      {dayEvents.length > desktopMax && (
+                        <div className="text-[9px] text-muted-foreground px-1">
+                          +{dayEvents.length - desktopMax} more
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </button>

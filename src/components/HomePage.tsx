@@ -27,6 +27,7 @@ import { EventDrawer } from "./EventDrawer";
 import { AddActionFab } from "./AddActionFab";
 import { AddEventSheet } from "./AddEventSheet";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Popover,
   PopoverContent,
@@ -42,14 +43,19 @@ export function HomePage() {
   const [anchor, setAnchor] = useState<Date>(() => new Date(0));
   const [activeDay, setActiveDay] = useState<Date>(() => new Date(0));
   const today = mounted ? activeDay : new Date(0);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const now = new Date();
+    const isMobileNow =
+      typeof window !== "undefined" && window.innerWidth < 768;
     let initialView: CalendarView = "month";
-    try {
-      const stored = localStorage.getItem("hearth:view");
-      if (stored === "week" || stored === "month") initialView = stored;
-    } catch {}
+    if (!isMobileNow) {
+      try {
+        const stored = localStorage.getItem("hearth:view");
+        if (stored === "week" || stored === "month") initialView = stored;
+      } catch {}
+    }
     setView(initialView);
     setAnchor(initialView === "week" ? startOfWeek(now, { weekStartsOn: 1 }) : startOfMonth(now));
     setActiveDay(now);
@@ -142,13 +148,19 @@ export function HomePage() {
     setActiveDay(now);
   };
 
-  // After save: jump to the new event's date (switch to week view to highlight it)
+  // After save: jump to the new event's date, but keep the user's current view.
+  // On mobile, stay on month view so the user lands back on the calendar overview.
   const onSaved = (date: Date) => {
-    setView("week");
+    const nextView: CalendarView = isMobile ? "month" : view;
+    setView(nextView);
     try {
-      localStorage.setItem("hearth:view", "week");
+      localStorage.setItem("hearth:view", nextView);
     } catch {}
-    setAnchor(startOfWeek(date, { weekStartsOn: 1 }));
+    setAnchor(
+      nextView === "week"
+        ? startOfWeek(date, { weekStartsOn: 1 })
+        : startOfMonth(date),
+    );
     setActiveDay(date);
     qc.invalidateQueries({ queryKey: ["events"] });
   };

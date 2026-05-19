@@ -17,13 +17,16 @@ import {
 } from "./EventForm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { SHARED_HOUSEHOLD_ID } from "@/lib/hearth";
+import { SHARED_HOUSEHOLD_ID, type EventCategory } from "@/lib/hearth";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialDate?: string;
+  defaultTitle?: string;
   defaultDescription?: string;
+  defaultCategory?: EventCategory;
+  title?: string;
   onSaved?: (date: Date) => void;
 }
 
@@ -31,15 +34,20 @@ export function AddEventSheet({
   open,
   onOpenChange,
   initialDate,
+  defaultTitle,
   defaultDescription,
+  defaultCategory,
+  title = "Add event",
   onSaved,
 }: Props) {
   const [values, setValues] = useState<EventFormValues>(() => {
     const base = defaultFormValues();
     return {
       ...base,
+      ...(defaultTitle ? { title: defaultTitle } : {}),
       ...(initialDate ? { date: initialDate } : {}),
       ...(defaultDescription ? { description: defaultDescription } : {}),
+      ...(defaultCategory ? { category: defaultCategory } : {}),
     };
   });
   const [saving, setSaving] = useState(false);
@@ -50,11 +58,13 @@ export function AddEventSheet({
       const base = defaultFormValues();
       setValues({
         ...base,
+        ...(defaultTitle ? { title: defaultTitle } : {}),
         ...(initialDate ? { date: initialDate } : {}),
         ...(defaultDescription ? { description: defaultDescription } : {}),
+        ...(defaultCategory ? { category: defaultCategory } : {}),
       });
     }
-  }, [open, initialDate, defaultDescription]);
+  }, [open, initialDate, defaultDescription, defaultTitle, defaultCategory]);
 
   const onSubmit = async () => {
     if (!values.title.trim()) {
@@ -93,7 +103,7 @@ export function AddEventSheet({
         className="h-[92vh] rounded-t-3xl p-0 flex flex-col md:max-w-lg md:mx-auto"
       >
         <SheetHeader className="px-6 pt-6 pb-2 text-left">
-          <SheetTitle className="font-serif text-2xl">Add event</SheetTitle>
+          <SheetTitle className="font-serif text-2xl">{title}</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <EventForm value={values} onChange={setValues} />
