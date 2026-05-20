@@ -26,6 +26,7 @@ interface Props {
   defaultTitle?: string;
   defaultDescription?: string;
   defaultCategory?: EventCategory;
+  defaultSource?: string;
   title?: string;
   onSaved?: (date: Date) => void;
 }
@@ -37,6 +38,7 @@ export function AddEventSheet({
   defaultTitle,
   defaultDescription,
   defaultCategory,
+  defaultSource = "manual",
   title = "Add event",
   onSaved,
 }: Props) {
@@ -80,7 +82,7 @@ export function AddEventSheet({
       all_day: values.allDay,
       category: values.category,
       priority: values.priority,
-      source: "manual",
+      source: defaultSource,
       household_id: SHARED_HOUSEHOLD_ID,
       ...iso,
     });
