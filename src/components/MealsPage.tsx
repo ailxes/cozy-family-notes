@@ -18,12 +18,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   Select,
   SelectContent,
@@ -439,16 +438,13 @@ export function MealsPage() {
         </div>
       )}
 
-      <Sheet open={editorOpen} onOpenChange={setEditorOpen}>
-        <SheetContent
-          side="bottom"
-          className="rounded-t-3xl p-0 flex flex-col md:max-w-lg md:mx-auto"
-        >
-          <SheetHeader className="px-6 pt-6 pb-2 text-left">
-            <SheetTitle className="font-serif text-2xl">
+      <Drawer open={editorOpen} onOpenChange={setEditorOpen}>
+        <DrawerContent className="max-h-[92vh] rounded-t-3xl p-0 flex flex-col md:max-w-lg md:mx-auto">
+          <DrawerHeader className="px-6 pt-2 pb-2 text-left">
+            <DrawerTitle className="font-serif text-2xl">
               {form.id ? "Edit meal" : "New meal"}
-            </SheetTitle>
-          </SheetHeader>
+            </DrawerTitle>
+          </DrawerHeader>
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="meal-name">Name</Label>
@@ -489,16 +485,16 @@ export function MealsPage() {
               />
             </div>
           </div>
-          <SheetFooter className="px-6 py-4 border-t border-border bg-background">
+          <div className="px-6 py-4 border-t border-border bg-background">
             <Button
               onClick={submitForm}
               className="w-full h-12 rounded-xl text-base"
             >
               {form.id ? "Save changes" : "Add meal"}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       <AddEventSheet
         open={!!scheduleMeal}
