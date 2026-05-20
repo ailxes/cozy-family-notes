@@ -43,7 +43,9 @@ export function HomePage() {
   const [view, setView] = useState<CalendarView>("month");
   const [anchor, setAnchor] = useState<Date>(() => new Date(0));
   const [activeDay, setActiveDay] = useState<Date>(() => new Date(0));
-  const today = mounted ? activeDay : new Date(0);
+  // `today` is the real current calendar date — used to draw the green
+  // "today" highlight. Stable on the server (epoch) until mount.
+  const today = mounted ? new Date() : new Date(0);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function HomePage() {
       } catch {}
     }
     setView(initialView);
-    setAnchor(initialView === "week" ? startOfWeek(now, { weekStartsOn: 1 }) : startOfMonth(now));
+    setAnchor(initialView === "week" ? startOfWeek(now, { weekStartsOn: 0 }) : startOfMonth(now));
     setActiveDay(now);
     setMounted(true);
   }, []);
@@ -78,7 +80,7 @@ export function HomePage() {
     }
     // realign anchor for the new view
     const ref = activeDay;
-    if (v === "week") setAnchor(startOfWeek(ref, { weekStartsOn: 1 }));
+    if (v === "week") setAnchor(startOfWeek(ref, { weekStartsOn: 0 }));
     else if (v === "month") setAnchor(startOfMonth(ref));
     else setAnchor(ref);
   };
@@ -92,11 +94,11 @@ export function HomePage() {
       return { start, end };
     }
     if (view === "week") {
-      const start = startOfWeek(anchor, { weekStartsOn: 1 });
+      const start = startOfWeek(anchor, { weekStartsOn: 0 });
       return { start, end: addDays(start, 7) };
     }
-    const start = startOfWeek(startOfMonth(anchor), { weekStartsOn: 1 });
-    const end = addDays(endOfWeek(endOfMonth(anchor), { weekStartsOn: 1 }), 1);
+    const start = startOfWeek(startOfMonth(anchor), { weekStartsOn: 0 });
+    const end = addDays(endOfWeek(endOfMonth(anchor), { weekStartsOn: 0 }), 1);
     return { start, end };
   })();
 
@@ -134,13 +136,13 @@ export function HomePage() {
       ? isSameDay(activeDay, new Date())
       : view === "week"
         ? isSameDay(
-            startOfWeek(anchor, { weekStartsOn: 1 }),
-            startOfWeek(new Date(), { weekStartsOn: 1 }),
+            startOfWeek(anchor, { weekStartsOn: 0 }),
+            startOfWeek(new Date(), { weekStartsOn: 0 }),
           )
         : isSameDay(startOfMonth(anchor), startOfMonth(new Date()));
 
   const goToDate = (d: Date) => {
-    if (view === "week") setAnchor(startOfWeek(d, { weekStartsOn: 1 }));
+    if (view === "week") setAnchor(startOfWeek(d, { weekStartsOn: 0 }));
     else if (view === "month") setAnchor(startOfMonth(d));
     else setAnchor(d);
     setActiveDay(d);
@@ -171,7 +173,7 @@ export function HomePage() {
   };
   const goToday = () => {
     const now = new Date();
-    if (view === "week") setAnchor(startOfWeek(now, { weekStartsOn: 1 }));
+    if (view === "week") setAnchor(startOfWeek(now, { weekStartsOn: 0 }));
     else if (view === "month") setAnchor(startOfMonth(now));
     else setAnchor(now);
     setActiveDay(now);
@@ -195,7 +197,7 @@ export function HomePage() {
     } catch {}
     setAnchor(
       nextView === "week"
-        ? startOfWeek(date, { weekStartsOn: 1 })
+        ? startOfWeek(date, { weekStartsOn: 0 })
         : startOfMonth(date),
     );
     setActiveDay(date);
@@ -210,7 +212,7 @@ export function HomePage() {
     view === "day"
       ? format(activeDay, "EEEE, MMM d")
       : view === "week"
-        ? `Week of ${format(startOfWeek(anchor, { weekStartsOn: 1 }), "MMM d")} – ${format(addDays(startOfWeek(anchor, { weekStartsOn: 1 }), 6), "MMM d")}`
+        ? `Week of ${format(startOfWeek(anchor, { weekStartsOn: 0 }), "MMM d")} – ${format(addDays(startOfWeek(anchor, { weekStartsOn: 0 }), 6), "MMM d")}`
         : `${format(startOfMonth(anchor), "MMM d")} – ${format(endOfMonth(anchor), "MMM d")}`;
 
   return (
@@ -244,7 +246,7 @@ export function HomePage() {
                   mode="single"
                   selected={activeDay}
                   onSelect={(d) => d && goToDate(d)}
-                  weekStartsOn={1}
+                  weekStartsOn={0}
                 />
               </PopoverContent>
             </Popover>
@@ -289,7 +291,7 @@ export function HomePage() {
 
       {view === "week" && (
         <WeekStrip
-          weekStart={startOfWeek(anchor, { weekStartsOn: 1 })}
+          weekStart={startOfWeek(anchor, { weekStartsOn: 0 })}
           activeDay={activeDay}
           today={today}
           events={events ?? []}
@@ -333,7 +335,7 @@ export function HomePage() {
       ) : (
         <WeekView
           events={events ?? []}
-          weekStart={startOfWeek(anchor, { weekStartsOn: 1 })}
+          weekStart={startOfWeek(anchor, { weekStartsOn: 0 })}
           activeDay={activeDay}
           onEventClick={setSelected}
           onEmptyDayAdd={(date) => setQuickAddDate(format(date, "yyyy-MM-dd"))}

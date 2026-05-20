@@ -20,7 +20,7 @@ export function WeekView({
   onEmptyDayAdd,
 }: WeekViewProps) {
   const today = new Date();
-  const monday = startOfWeek(weekStart, { weekStartsOn: 1 });
+  const monday = startOfWeek(weekStart, { weekStartsOn: 0 });
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const days = useMemo(() => {

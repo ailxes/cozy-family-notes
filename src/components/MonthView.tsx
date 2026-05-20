@@ -21,8 +21,8 @@ interface Props {
 
 export function MonthView({ monthStart, today, events, onDayClick }: Props) {
   const days = useMemo(() => {
-    const start = startOfWeek(startOfMonth(monthStart), { weekStartsOn: 1 });
-    const end = endOfWeek(endOfMonth(monthStart), { weekStartsOn: 1 });
+    const start = startOfWeek(startOfMonth(monthStart), { weekStartsOn: 0 });
+    const end = endOfWeek(endOfMonth(monthStart), { weekStartsOn: 0 });
     return eachDayOfInterval({ start, end });
   }, [monthStart]);
 
@@ -44,7 +44,7 @@ export function MonthView({ monthStart, today, events, onDayClick }: Props) {
     return map;
   }, [events]);
 
-  const weekHeads = ["M", "T", "W", "T", "F", "S", "S"];
+  const weekHeads = ["S", "M", "T", "W", "T", "F", "S"];
 
   return (
     <div className="flex flex-col">
@@ -59,7 +59,7 @@ export function MonthView({ monthStart, today, events, onDayClick }: Props) {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 border-t border-l border-border/60">
+        <div className="grid grid-cols-7">
           {days.map((date) => {
             const key = format(date, "yyyy-MM-dd");
             const dayEvents = byDay.get(key) ?? [];
@@ -71,8 +71,8 @@ export function MonthView({ monthStart, today, events, onDayClick }: Props) {
               <button
                 key={key}
                 onClick={() => onDayClick(date)}
-                className={`relative min-h-[110px] sm:min-h-[120px] border-r border-b border-border/60 p-1 sm:p-1.5 text-left transition-colors flex flex-col gap-1 overflow-hidden hover:bg-secondary/40 ${
-                  inMonth ? "" : "bg-muted/20"
+                className={`relative min-h-[96px] sm:min-h-[112px] p-1 sm:p-1.5 text-left transition-colors flex flex-col gap-1 overflow-hidden rounded-lg hover:bg-secondary/40 ${
+                  inMonth ? "" : "opacity-40"
                 }`}
               >
                 <div className="flex items-center justify-start">

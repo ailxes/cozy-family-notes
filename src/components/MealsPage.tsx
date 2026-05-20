@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format } from "date-fns";
+import { addDays, format, startOfWeek } from "date-fns";
 import {
   Camera,
   CalendarPlus,
   Loader2,
   Pencil,
   Plus,
+  Sparkles,
   Trash2,
   UtensilsCrossed,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "./AppShell";
 import { AddEventSheet } from "./AddEventSheet";
 import { Button } from "@/components/ui/button";
@@ -64,7 +66,9 @@ export function MealsPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [scheduleMeal, setScheduleMeal] = useState<Meal | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
 
   useEffect(() => {
     setMeals(loadMeals());
@@ -181,7 +185,93 @@ export function MealsPage() {
     }
   };
 
+  const autoFillThisWeek = async () => {
+    const dinners = meals.filter((m) => m.type === "dinner");
+    if (dinners.length === 0) {
+      toast.error("Add some dinners to your meal list first.");
+      return;
+    }
+
+    setAutoFilling(true);
+    try {
+      const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
+      const weekEnd = addDays(weekStart, 7);
+
+      const { data: existing, error: fetchErr } = await supabase
+        .from("events")
+        .select("start_datetime")
+        .eq("household_id", SHARED_HOUSEHOLD_ID)
+        .eq("source", "meal")
+        .gte("start_datetime", weekStart.toISOString())
+        .lt("start_datetime", weekEnd.toISOString());
+      if (fetchErr) throw fetchErr;
+
+      const takenDays = new Set(
+        (existing ?? []).map((e) =>
+          format(new Date(e.start_datetime), "yyyy-MM-dd"),
+        ),
+      );
+
+      const shuffled = [...dinners].sort(() => Math.random() - 0.5);
+      const rows: Array<{
+        household_id: string;
+        title: string;
+        description: string | null;
+        all_day: boolean;
+        category: "personal";
+        priority: "normal";
+        source: "meal";
+        start_datetime: string;
+        end_datetime: null;
+      }> = [];
+
+      let pick = 0;
+      for (let i = 0; i < 7; i++) {
+        const day = addDays(weekStart, i);
+        const key = format(day, "yyyy-MM-dd");
+        if (takenDays.has(key)) continue;
+        const meal = shuffled[pick % shuffled.length];
+        pick++;
+        const start = new Date(day);
+        start.setHours(0, 0, 0, 0);
+        rows.push({
+          household_id: SHARED_HOUSEHOLD_ID,
+          title: meal.name,
+          description: meal.notes ? meal.notes : null,
+          all_day: true,
+          category: "personal",
+          priority: "normal",
+          source: "meal",
+          start_datetime: start.toISOString(),
+          end_datetime: null,
+        });
+      }
+
+      if (rows.length === 0) {
+        toast("This week is already filled with meals.");
+        return;
+      }
+
+      const { error: insertErr } = await supabase.from("events").insert(rows);
+      if (insertErr) throw insertErr;
+
+      qc.invalidateQueries({ queryKey: ["events"] });
+      toast.success(
+        rows.length === 1
+          ? "Added 1 dinner to this week."
+          : `Added ${rows.length} dinners to this week.`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Auto-fill failed";
+      console.error("[MealsPage] auto-fill failed", err);
+      toast.error(msg);
+    } finally {
+      setAutoFilling(false);
+    }
+  };
+
   const today = format(new Date(), "yyyy-MM-dd");
+  const dinnerCount = meals.filter((m) => m.type === "dinner").length;
 
   const openPhotoPicker = () => fileInputRef.current?.click();
 
@@ -199,7 +289,7 @@ export function MealsPage() {
         }}
       />
 
-      <div className="px-5 md:px-6 pt-6 pb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="px-5 md:px-6 pt-6 pb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="font-serif text-3xl md:text-4xl font-semibold leading-tight">
             Meal menu
@@ -229,6 +319,35 @@ export function MealsPage() {
           </Button>
         </div>
       </div>
+
+      {mounted && dinnerCount > 0 && (
+        <div className="mx-5 md:mx-6 mb-6 rounded-2xl border border-border bg-card p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-medium">Plan this week's dinners</div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Randomly pick a dinner from your list for each empty day of
+                this week.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={autoFillThisWeek}
+            disabled={autoFilling}
+            className="h-10 rounded-full px-4 shrink-0"
+          >
+            {autoFilling ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-1" />
+            ) : (
+              <Sparkles className="w-4 h-4 mr-1" />
+            )}
+            {autoFilling ? "Filling..." : "Auto-fill"}
+          </Button>
+        </div>
+      )}
 
       {mounted && meals.length === 0 ? (
         <div className="mx-5 md:mx-6 mb-10 rounded-3xl bg-card border border-border p-10 text-center">
@@ -388,6 +507,7 @@ export function MealsPage() {
         defaultTitle={scheduleMeal?.name}
         defaultDescription={scheduleMeal?.notes ?? undefined}
         defaultCategory="personal"
+        defaultSource="meal"
         initialDate={today}
         onSaved={() => {
           toast.success("Meal added to calendar");

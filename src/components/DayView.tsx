@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { format, isSameDay } from "date-fns";
 import { Plus, ChevronLeft } from "lucide-react";
 import { EventCard } from "./EventCard";
@@ -13,7 +13,8 @@ interface Props {
   onBack: () => void;
 }
 
-const SWIPE_THRESHOLD = 60;
+const SWIPE_THRESHOLD = 40;
+const AXIS_LOCK_DISTANCE = 8;
 
 export function DayView({
   date,
@@ -41,29 +42,74 @@ export function DayView({
   const accentBar = dominant ? CATEGORY_STYLES[dominant].dot : "bg-border";
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const axisRef = useRef<"h" | "v" | null>(null);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
+  const reset = () => {
+    touchStart.current = null;
+    axisRef.current = null;
+    setDragX(0);
+    setDragging(false);
+  };
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
+    axisRef.current = null;
+    setDragX(0);
+    setDragging(false);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    if (!start) return;
+    const t = e.touches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+
+    if (axisRef.current === null) {
+      if (Math.abs(dx) < AXIS_LOCK_DISTANCE && Math.abs(dy) < AXIS_LOCK_DISTANCE) {
+        return;
+      }
+      axisRef.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      if (axisRef.current === "h") setDragging(true);
+    }
+
+    if (axisRef.current === "h") {
+      // Damp the drag a bit so it feels grounded
+      setDragX(dx * 0.85);
+    }
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
     const start = touchStart.current;
-    touchStart.current = null;
-    if (!start) return;
+    if (!start) {
+      reset();
+      return;
+    }
     const t = e.changedTouches[0];
     const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    if (Math.abs(dx) < SWIPE_THRESHOLD) return;
-    if (Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) onBack();
+    if (axisRef.current === "h" && Math.abs(dx) >= SWIPE_THRESHOLD) {
+      onBack();
+      reset();
+      return;
+    }
+    // Spring back
+    setDragging(false);
+    setDragX(0);
+    touchStart.current = null;
+    axisRef.current = null;
   };
 
   return (
     <div
       className="px-4 md:px-6 py-3"
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={reset}
+      style={{ touchAction: "pan-y" }}
     >
       <button
         onClick={onBack}
@@ -74,11 +120,15 @@ export function DayView({
       </button>
 
       <div
-        className={`relative overflow-hidden rounded-2xl border ${
+        className={`relative overflow-hidden rounded-2xl border will-change-transform ${
           isToday
             ? "bg-card border-primary/30 shadow-soft"
             : "bg-card/70 border-border/60"
         }`}
+        style={{
+          transform: `translateX(${dragX}px)`,
+          transition: dragging ? "none" : "transform 220ms ease-out",
+        }}
       >
         <span
           className={`absolute left-0 top-4 bottom-4 w-1 rounded-r-full ${accentBar} opacity-70`}
@@ -133,7 +183,7 @@ export function DayView({
       </div>
 
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        Swipe left to go back to month
+        Swipe to go back to month
       </p>
     </div>
   );
