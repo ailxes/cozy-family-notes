@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Plus, Camera, ImagePlus, PencilLine, Mic } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { AddEventSheet } from "./AddEventSheet";
 import { UploadFlyerSheet } from "./UploadFlyerSheet";
 import { DictateEventSheet } from "./DictateEventSheet";
@@ -60,14 +60,11 @@ export function AddActionFab({
         </button>
       </div>
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side="bottom"
-          className="rounded-t-3xl pb-8 md:max-w-lg md:mx-auto"
-        >
-          <SheetHeader className="text-left mb-2">
-            <SheetTitle className="font-serif text-2xl">Add to the week</SheetTitle>
-          </SheetHeader>
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerContent className="rounded-t-3xl pb-8 px-4 md:max-w-lg md:mx-auto">
+          <DrawerHeader className="text-left mb-2 px-2">
+            <DrawerTitle className="font-serif text-2xl">Add to the week</DrawerTitle>
+          </DrawerHeader>
           <div className="space-y-3 pt-2">
             <button
               onClick={() => pick("dictate")}
@@ -126,8 +123,8 @@ export function AddActionFab({
               </div>
             </button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
 
       <AddEventSheet
         open={addOpen}

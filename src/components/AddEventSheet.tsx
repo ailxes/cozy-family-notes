@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import {
   EventForm,
@@ -99,18 +98,15 @@ export function AddEventSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="h-[92vh] rounded-t-3xl p-0 flex flex-col md:max-w-lg md:mx-auto"
-      >
-        <SheetHeader className="px-6 pt-6 pb-2 text-left">
-          <SheetTitle className="font-serif text-2xl">{title}</SheetTitle>
-        </SheetHeader>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="h-[92vh] rounded-t-3xl p-0 flex flex-col md:max-w-lg md:mx-auto">
+        <DrawerHeader className="px-6 pt-2 pb-2 text-left">
+          <DrawerTitle className="font-serif text-2xl">{title}</DrawerTitle>
+        </DrawerHeader>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <EventForm value={values} onChange={setValues} />
         </div>
-        <SheetFooter className="px-6 py-4 border-t border-border bg-background">
+        <div className="px-6 py-4 border-t border-border bg-background">
           <Button
             onClick={onSubmit}
             disabled={saving}
@@ -118,8 +114,8 @@ export function AddEventSheet({
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Add to calendar"}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }

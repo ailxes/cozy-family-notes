@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Upload, Sparkles, Trash2, Camera, ImagePlus, PencilLine } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -198,16 +198,13 @@ export function UploadFlyerSheet({ open, onOpenChange, mode = "library", onSaved
 
   return (
     <>
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent
-        side="bottom"
-        className="h-[92vh] rounded-t-3xl p-0 flex flex-col md:max-w-lg md:mx-auto"
-      >
-        <SheetHeader className="px-6 pt-6 pb-2 text-left">
-          <SheetTitle className="font-serif text-2xl">
+    <Drawer open={open} onOpenChange={onClose}>
+      <DrawerContent className="h-[92vh] rounded-t-3xl p-0 flex flex-col md:max-w-lg md:mx-auto">
+        <DrawerHeader className="px-6 pt-2 pb-2 text-left">
+          <DrawerTitle className="font-serif text-2xl">
             {stage === "confirm" ? "Confirm events" : mode === "camera" ? "Take a photo" : "Upload flyer"}
-          </SheetTitle>
-        </SheetHeader>
+          </DrawerTitle>
+        </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {stage === "pick" && (
@@ -429,8 +426,8 @@ export function UploadFlyerSheet({ open, onOpenChange, mode = "library", onSaved
             </Button>
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
 
     <AddEventSheet
       open={manualOpen}
