@@ -43,13 +43,22 @@ export function AddActionFab({
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed z-20 bottom-24 right-5 md:bottom-auto md:top-20 md:right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lift flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-        aria-label="Add event"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      <div className="fixed z-20 bottom-24 right-5 md:bottom-auto md:top-20 md:right-6 flex flex-col items-center gap-3">
+        <button
+          onClick={() => setDictateOpen(true)}
+          className="w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lift flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+          aria-label="Add event by voice"
+        >
+          <Mic className="w-6 h-6" />
+        </button>
+        <button
+          onClick={() => setOpen(true)}
+          className="w-14 h-14 rounded-full bg-card text-foreground border border-border shadow-lift flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+          aria-label="Add event"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
