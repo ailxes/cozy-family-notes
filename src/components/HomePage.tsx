@@ -314,6 +314,8 @@ export function HomePage() {
             setAnchor(d);
             setView("day");
           }}
+          onNextMonth={goNext}
+          onPrevMonth={goPrev}
         />
       ) : view === "day" ? (
         <DayView

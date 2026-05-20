@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -17,9 +17,21 @@ interface Props {
   events: HearthEvent[];
   onDayClick: (date: Date) => void;
   onEventClick?: (event: HearthEvent) => void;
+  onNextMonth?: () => void;
+  onPrevMonth?: () => void;
 }
 
-export function MonthView({ monthStart, today, events, onDayClick }: Props) {
+const SWIPE_THRESHOLD = 50;
+const AXIS_LOCK_DISTANCE = 8;
+
+export function MonthView({
+  monthStart,
+  today,
+  events,
+  onDayClick,
+  onNextMonth,
+  onPrevMonth,
+}: Props) {
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(monthStart), { weekStartsOn: 0 });
     const end = endOfWeek(endOfMonth(monthStart), { weekStartsOn: 0 });
@@ -46,9 +58,81 @@ export function MonthView({ monthStart, today, events, onDayClick }: Props) {
 
   const weekHeads = ["S", "M", "T", "W", "T", "F", "S"];
 
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const axisRef = useRef<"h" | "v" | null>(null);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
+  const resetSwipe = () => {
+    touchStart.current = null;
+    axisRef.current = null;
+    setDragX(0);
+    setDragging(false);
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+    axisRef.current = null;
+    setDragX(0);
+    setDragging(false);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    if (!start) return;
+    const t = e.touches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+
+    if (axisRef.current === null) {
+      if (Math.abs(dx) < AXIS_LOCK_DISTANCE && Math.abs(dy) < AXIS_LOCK_DISTANCE) {
+        return;
+      }
+      axisRef.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      if (axisRef.current === "h") setDragging(true);
+    }
+
+    if (axisRef.current === "h") {
+      setDragX(dx * 0.6);
+    }
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    if (!start) {
+      resetSwipe();
+      return;
+    }
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    if (axisRef.current === "h" && Math.abs(dx) >= SWIPE_THRESHOLD) {
+      // Swipe right → next month; swipe left → previous month.
+      if (dx > 0) onNextMonth?.();
+      else onPrevMonth?.();
+    }
+    setDragging(false);
+    setDragX(0);
+    touchStart.current = null;
+    axisRef.current = null;
+  };
+
   return (
-    <div className="flex flex-col">
-      <div className="px-1 sm:px-4">
+    <div
+      className="flex flex-col"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={resetSwipe}
+      style={{ touchAction: "pan-y" }}
+    >
+      <div
+        className="px-1 sm:px-4 will-change-transform"
+        style={{
+          transform: `translateX(${dragX}px)`,
+          transition: dragging ? "none" : "transform 200ms ease-out",
+        }}
+      >
         <div className="grid grid-cols-7">
           {weekHeads.map((d, i) => (
             <div
