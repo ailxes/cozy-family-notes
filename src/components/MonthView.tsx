@@ -107,9 +107,9 @@ export function MonthView({
     const t = e.changedTouches[0];
     const dx = t.clientX - start.x;
     if (axisRef.current === "h" && Math.abs(dx) >= SWIPE_THRESHOLD) {
-      // Swipe right → next month; swipe left → previous month.
-      if (dx > 0) onNextMonth?.();
-      else onPrevMonth?.();
+      // Swipe right → previous month; swipe left → next month.
+      if (dx > 0) onPrevMonth?.();
+      else onNextMonth?.();
     }
     setDragging(false);
     setDragX(0);
